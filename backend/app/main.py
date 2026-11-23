@@ -45,6 +45,7 @@ def student_interface():
 def ui_config():
     return {
         'application_name': settings.application_name,
+        'microsoft_login_enabled': bool(settings.microsoft_client_id),
         'data_controller_name': settings.data_controller_name,
         'privacy_contact_email': settings.privacy_contact_email,
         'local_mailbox': settings.mail_provider == 'smtp' and settings.smtp_host in {'127.0.0.1', 'localhost'} and settings.smtp_port == 1025,

@@ -26,6 +26,7 @@ class User(Base):
         PrimaryKeyConstraint('id', name='pk_users'),
         UniqueConstraint('reset_token_hash', name='uq_users_reset_token_hash'),
         UniqueConstraint('email', name='uq_users_email'),
+        UniqueConstraint('microsoft_object_id', name='uq_users_microsoft_object_id'),
         CheckConstraint(
             "email = lower(btrim(email)) AND length(email) > 0",
             name='ck_users_email_normalized',
@@ -45,6 +46,7 @@ class User(Base):
         DateTime(timezone=True), nullable=False, server_default=func.now(),
     )
     email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    microsoft_object_id: Mapped[str | None] = mapped_column(String(36))
 
     session_version: Mapped[int] = mapped_column(Integer, nullable=False, server_default='0')
     reset_token_hash: Mapped[str | None] = mapped_column(String(64))

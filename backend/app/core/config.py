@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     database_schema: str | None = Field(default=None, pattern=r'^[a-z][a-z0-9_]{0,62}$')
     public_origin: str | None = None
     serve_frontend: bool = True
+    microsoft_client_id: str | None = None
+    microsoft_client_secret: SecretStr | None = None
+    microsoft_tenant_id: Literal['23fffcb6-2a4a-4b0c-b169-a2e1a5fefa4f'] = '23fffcb6-2a4a-4b0c-b169-a2e1a5fefa4f'
     mail_provider: Literal['smtp', 'resend', 'gmail'] = 'smtp'
     resend_api_key: SecretStr | None = None
     gmail_client_id: str | None = None
@@ -56,6 +59,10 @@ class Settings(BaseSettings):
             raise ValueError('Resend requires RESEND_API_KEY and MAIL_FROM')
         if self.mail_provider == 'gmail' and not all((self.gmail_client_id, self.gmail_client_secret, self.gmail_refresh_token)):
             raise ValueError('Gmail requires GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET and GMAIL_REFRESH_TOKEN')
+        if bool(self.microsoft_client_id) != bool(self.microsoft_client_secret):
+            raise ValueError('Microsoft login requires both client ID and client secret')
+        if self.microsoft_client_id and not self.public_origin:
+            raise ValueError('Microsoft login requires PUBLIC_ORIGIN')
         if self.smtp_host not in {'127.0.0.1', 'localhost', '::1', 'mailpit'} and self.smtp_tls_mode == 'none':
             raise ValueError('Remote SMTP requires starttls or ssl')
         if self.smtp_username and not self.smtp_password:

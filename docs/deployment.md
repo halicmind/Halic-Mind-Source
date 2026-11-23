@@ -24,6 +24,8 @@ The supplied development env points to localhost. Do not upload it as production
 
 ## Gmail (no custom domain)
 
+School Microsoft login setup is documented separately in [microsoft-login.md](microsoft-login.md). It is disabled until the Entra Web client credentials are configured.
+
 Enable Gmail API in the sender's Google Cloud project and create a Desktop app OAuth client. Add the sender account as an OAuth test user during setup. Download the client JSON outside the repository and run:
 
 ```powershell
