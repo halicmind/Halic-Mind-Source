@@ -15,8 +15,12 @@ class Settings(BaseSettings):
     database_url: str
     database_schema: str | None = Field(default=None, pattern=r'^[a-z][a-z0-9_]{0,62}$')
     public_origin: str | None = None
-    mail_provider: Literal['smtp', 'resend'] = 'smtp'
+    mail_provider: Literal['smtp', 'resend', 'gmail'] = 'smtp'
     resend_api_key: SecretStr | None = None
+    gmail_client_id: str | None = None
+    gmail_client_secret: SecretStr | None = None
+    gmail_refresh_token: SecretStr | None = None
+    gmail_sender: str = 'halicmind@gmail.com'
     mail_from: str | None = None
     jwt_secret_key: SecretStr = Field(min_length=32)
     access_token_expire_minutes: int = Field(default=30, ge=1, le=1440)
@@ -49,6 +53,8 @@ class Settings(BaseSettings):
             self.database_url = url.render_as_string(hide_password=False)
         if self.mail_provider == 'resend' and (not self.resend_api_key or not self.mail_from):
             raise ValueError('Resend requires RESEND_API_KEY and MAIL_FROM')
+        if self.mail_provider == 'gmail' and not all((self.gmail_client_id, self.gmail_client_secret, self.gmail_refresh_token)):
+            raise ValueError('Gmail requires GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET and GMAIL_REFRESH_TOKEN')
         if self.smtp_host not in {'127.0.0.1', 'localhost', '::1', 'mailpit'} and self.smtp_tls_mode == 'none':
             raise ValueError('Remote SMTP requires starttls or ssl')
         if self.smtp_username and not self.smtp_password:

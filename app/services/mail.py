@@ -1,10 +1,12 @@
-"""SMTP delivery; local development sends only to the Mailpit inbox."""
+"""Email delivery over local SMTP or hosted HTTPS APIs."""
+import base64
 from email.message import EmailMessage
 import smtplib
 import ssl
 import json
 from urllib.request import Request, urlopen
 from urllib.error import URLError
+from urllib.parse import urlencode
 from typing import Protocol
 
 from app.core.config import settings
@@ -24,9 +26,7 @@ class SMTPMailer:
         self._send(email, 'E-posta adresini doğrula',
             f'{settings.application_name} hesabını doğrulamak için aşağıdaki tek kullanımlık kodu kullan:\n\n'
             f'{token}\n\nBu kod {settings.email_verification_expire_minutes} dakika geçerlidir.\n'
-            'Kodu uygulamanın e-posta doğrulama alanına gir. '
-            'Geliştirme aşamasında Swagger üzerinden POST /api/v1/auth/verify-email '
-            'isteğinin token alanında kullanabilirsin.\n\n'
+            'Kodu uygulamanın e-posta doğrulama alanına gir.\n\n'
             'Bu kaydı sen başlatmadıysan bu mesajı dikkate alma.')
 
     def send_password_reset(self, email: str, token: str) -> None:
@@ -74,5 +74,34 @@ class ResendMailer(SMTPMailer):
             raise MailDeliveryError('Email could not be delivered') from exc
 
 
+class GmailMailer(SMTPMailer):
+    """Send with the account owner's offline OAuth grant, using only HTTPS."""
+
+    def _send(self, email: str, subject: str, body: str) -> None:
+        token_request = Request('https://oauth2.googleapis.com/token', method='POST',
+            headers={'Content-Type': 'application/x-www-form-urlencoded'},
+            data=urlencode({'client_id': settings.gmail_client_id,
+                            'client_secret': settings.gmail_client_secret.get_secret_value(),
+                            'refresh_token': settings.gmail_refresh_token.get_secret_value(),
+                            'grant_type': 'refresh_token'}).encode())
+        try:
+            with urlopen(token_request, timeout=settings.smtp_timeout_seconds) as response:
+                access_token = json.load(response)['access_token']
+            message = EmailMessage()
+            message['From'] = f'{settings.application_name} <{settings.gmail_sender}>'
+            message['To'] = email
+            message['Subject'] = f'{settings.application_name} — {subject}'
+            message.set_content(body)
+            request = Request('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', method='POST',
+                headers={'Authorization': f'Bearer {access_token}', 'Content-Type': 'application/json'},
+                data=json.dumps({'raw': base64.urlsafe_b64encode(message.as_bytes()).decode('ascii')}).encode())
+            with urlopen(request, timeout=settings.smtp_timeout_seconds) as response:
+                if response.status != 200:
+                    raise MailDeliveryError('Gmail rejected the message')
+        except (OSError, URLError, ValueError, KeyError) as exc:
+            raise MailDeliveryError('Email could not be delivered through Gmail') from exc
+
+
 def get_mailer() -> VerificationMailer:
-    return ResendMailer() if settings.mail_provider == 'resend' else SMTPMailer()
+    providers = {'smtp': SMTPMailer, 'resend': ResendMailer, 'gmail': GmailMailer}
+    return providers[settings.mail_provider]()

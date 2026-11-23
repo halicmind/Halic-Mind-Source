@@ -14,12 +14,16 @@ services:
       - key: JWT_SECRET_KEY
         generateValue: true
       - key: PUBLIC_ORIGIN
-        value: https://halicmind.onrender.com
+        value: https://halic-mind-source.onrender.com
       - key: MAIL_PROVIDER
-        value: resend
-      - key: RESEND_API_KEY
+        value: gmail
+      - key: GMAIL_CLIENT_ID
         sync: false
-      - key: MAIL_FROM
+      - key: GMAIL_CLIENT_SECRET
         sync: false
+      - key: GMAIL_REFRESH_TOKEN
+        sync: false
+      - key: GMAIL_SENDER
+        value: halicmind@gmail.com
       - key: EXAM_SYNC_ENABLED
         value: false
