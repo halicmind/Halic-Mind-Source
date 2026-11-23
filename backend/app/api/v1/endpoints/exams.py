@@ -7,7 +7,7 @@ from app.services.exam_matching import freshness_cutoff, verified_document
 from app.models.exam import ExamDocument
 from app.api.dependencies import CurrentUser, DB
 from app.schemas.exam import TermExamCalendar
-from app.services.exams import list_calendars
+from app.services.exams import list_calendars, published_term_types
 
 router = APIRouter(prefix='/exams', tags=['exams'])
 
@@ -56,7 +56,7 @@ def search_schedules(term_id: int, user: CurrentUser, db: DB, q: str = Query(min
     query = select(*(rows.c.value[field].astext.label(field) for field in fields),
                    ExamDocument.exam_type, ExamDocument.announcement_url).distinct().select_from(ExamDocument).join(rows, true()).where(
             verified_document(db, freshness_cutoff()), ExamDocument.academic_year == term.academic_year,
-            ExamDocument.term_type == term.term_type, text("""
+            ExamDocument.term_type.in_(published_term_types(term)), text("""
         EXISTS (
             SELECT 1 FROM (VALUES (schedule.value->>'code'), (schedule.value->>'name')) AS fields(value)
             WHERE strpos(regexp_replace(lower(translate(value,'İIıŞşĞğÜüÖöÇç','iiissgguuoocc')),

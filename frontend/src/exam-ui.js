@@ -86,7 +86,7 @@ export function createExamUI({e,icon,button,termPicker,termLabel,emptyState}){
     ${sourceErrors(sync?.errors)}
     ${publishedSchedules(calendar?.documents)}</details>
     ${!calendar?emptyState('Önce dönemini oluştur','Sınav takvimi seçtiğin akademik yıla ve döneme göre gösterilecek.','new-term','Dönem oluştur',false,'calendar'):calendar.status==='unavailable'?emptyState('Genel takvim henüz doğrulanmadı',calendar.reason,null,null,false,'calendar'):`<h2 class="exam-section-title">Genel sınav aralıkları</h2><div class="exam-source"><span>Kaynak kontrolü: ${e(displayDate(calendar.checked_on+'T12:00:00Z'))} · ${e(termLabel(term))}</span><a href="${e(calendar.source_url)}" target="_blank" rel="noopener noreferrer">Resmi akademik takvimi aç ↗</a></div><div class="exam-periods">${calendar.periods.map(period=>`<article class="exam-period"><span class="eyebrow">AKADEMİK TAKVİM</span><h2>${e(period.label)}</h2><p class="exam-range">${e(displayDate(period.start_date+'T12:00:00Z'))}<br><span>— ${e(displayDate(period.end_date+'T12:00:00Z'))}</span></p><span class="pill amber">Genel aralık · ders tarihi değil</span></article>`).join('')}</div>`}
-    <p class="field-help">Tüm saatler Türkiye saatidir (UTC+3). Mazeret ve bütünleme aralıkları sınava giriş hakkı oluşturmaz. Üniversitenin güncel duyurusu esastır. Hazırlık takvimleri henüz otomatik eşleştirmeye dahil değildir.</p>`;
+    <p class="field-help">Tüm saatler Türkiye saatidir (UTC+3). Mazeret ve bütünleme aralıkları sınava giriş hakkı oluşturmaz. Üniversitenin güncel duyurusu esastır. Hazırlık derslerinde yalnızca açıkça hazırlık olarak belirtilen sınavlar eşleştirilir.</p>`;
   }
   return {page,searchResults};
 }

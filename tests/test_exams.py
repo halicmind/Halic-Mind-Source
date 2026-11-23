@@ -330,3 +330,36 @@ def test_section_survives_calendar_reload_with_colliding_physical_row(academic_a
     assert env.client.put('/api/v1/exams/selection', json=payload).status_code == 200
     selected = group()['selected']
     assert (selected['section'], selected['starts_at'], selected['room']) == ('B', '2026-12-28T13:15:00+03:00', 'B205')
+
+
+def test_shared_sections_do_not_assume_one_section_per_program():
+    headers = ['Ders Kodu', 'Ders Adı', 'Sınav Tarihi', 'Sınav Başlangıç', 'Program', 'Ders Açılan Şube']
+    rows, warnings = parse_sheet([headers, ['KON1003', 'Müzik', '28.12.2026 \nPazartesi', '10:30', 'Opera; Tiyatro', '1; 2; 3']], 'Konservatuvar', CONTEXT)
+    assert warnings == []
+    assert [(r['program'], r['section']) for r in rows] == [('Opera', '1; 2; 3'), ('Tiyatro', '1; 2; 3')]
+
+
+def test_excel_ignores_trailing_formatting_but_rejects_data_beyond_limit():
+    from io import BytesIO
+    from openpyxl import Workbook
+    workbook = Workbook()
+    sheet = workbook.active
+    for row in ROWS:
+        sheet.append(row)
+    tail = sheet.cell(1048576, 1)
+    tail.number_format = '0.00'
+    data = BytesIO()
+    workbook.save(data)
+    rows, warnings = read_excel(data.getvalue(), CONTEXT)
+    assert len(rows) == 1 and not warnings
+    tail.value = 'MAT101'
+    data = BytesIO()
+    workbook.save(data)
+    with pytest.raises(ValueError, match='boyut'):
+        read_excel(data.getvalue(), CONTEXT)
+
+
+def test_annual_terms_list_both_semesters_without_reclassifying_summer():
+    from app.services.exams import published_term_types
+    assert published_term_types(SimpleNamespace(term_type='annual')) == ('annual', 'fall', 'spring')
+    assert published_term_types(SimpleNamespace(term_type='spring')) == ('spring',)
