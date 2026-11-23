@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "halicmind",
+  "name": "halic-mind-source",
   "pages_build_output_dir": "./dist",
   "compatibility_date": "2026-11-23",
   "vars": { "API_ORIGIN": "https://halic-mind-source.onrender.com" }
