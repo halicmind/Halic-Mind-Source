@@ -9,7 +9,7 @@ In Microsoft Entra admin center, open **App registrations → New registration**
 - Name: `HalicMind`
 - Supported account types: **Accounts in any organizational directory**. This allows an app registered in the project's own tenant to be used by the school tenant, subject to its consent policy.
 - Redirect platform: **Web** (the backend exchanges the authorization code).
-- Redirect URI: `https://halic-mind-source.pages.dev/api/v1/auth/microsoft/callback`
+- Redirect URI: `https://halic-mind-source.onrender.com/api/v1/auth/microsoft/callback`
 - Delegated Microsoft Graph permission: `User.Read`.
 - Create a client secret under **Certificates & secrets**. Save the secret value securely; it is not the secret ID. Record its expiry and rotate it before it expires.
 
@@ -24,7 +24,7 @@ Apply Alembic migration `0008_microsoft_login` first. Then configure these Rende
 ```dotenv
 MICROSOFT_CLIENT_ID=<application-client-id>
 MICROSOFT_CLIENT_SECRET=<secret-value>
-PUBLIC_ORIGIN=https://halic-mind-source.pages.dev
+PUBLIC_ORIGIN=https://halic-mind-source.onrender.com
 ```
 
 Keep both credentials in Render, never in Cloudflare Pages or Git. For a local handoff, put the two credential values in an ignored `.env.microsoft` file at the repository root. With no credentials configured, UI configuration disables the Microsoft button and the OAuth routes return 404.

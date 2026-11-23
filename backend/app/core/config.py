@@ -5,6 +5,10 @@ from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+RENDER_ORIGIN = 'https://halic-mind-source.onrender.com'
+PAGES_ORIGIN = 'https://halic-mind-source.pages.dev'
+
+
 class Settings(BaseSettings):
     application_name: str = Field(default='HalicMind', min_length=1, max_length=80)
     data_controller_name: str | None = Field(default=None, max_length=200)
@@ -15,6 +19,7 @@ class Settings(BaseSettings):
     database_url: str
     database_schema: str | None = Field(default=None, pattern=r'^[a-z][a-z0-9_]{0,62}$')
     public_origin: str | None = None
+    render_external_url: str | None = None
     serve_frontend: bool = True
     classroom_client_id: str | None = None
     classroom_client_secret: SecretStr | None = None
@@ -44,6 +49,9 @@ class Settings(BaseSettings):
 
     @model_validator(mode='after')
     def validate_smtp(self):
+        if self.render_external_url == RENDER_ORIGIN:
+            self.public_origin = RENDER_ORIGIN
+            self.serve_frontend = True
         if self.public_origin:
             from urllib.parse import urlsplit
             origin = urlsplit(self.public_origin)

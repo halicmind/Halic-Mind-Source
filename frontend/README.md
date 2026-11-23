@@ -15,7 +15,7 @@ Connect `halicmind/Halic-Mind-Source` and set:
 
 The build copies browser assets into `dist/assets`, and installs the Pages Function at `dist/_worker.js`. Only `/api/*` calls invoke the Function; static requests use Pages directly. The Function forwards the browser's cookies, request body and Origin to the fixed Render backend and does not cache API responses. No database password, Gmail credentials, JWT key or Supabase secret belongs in Pages.
 
-After the first Pages deployment, set Render `PUBLIC_ORIGIN` to the exact production URL, such as `https://your-project.pages.dev`. Then set `SERVE_FRONTEND=false` on Render. Preview URLs intentionally cannot create production browser sessions. Do not enable wildcard CORS or rewrite the browser's Origin to bypass this check.
+Render serves the student interface with `SERVE_FRONTEND=true` and `PUBLIC_ORIGIN=https://halic-mind-source.onrender.com`.
 
 ## Local development
 

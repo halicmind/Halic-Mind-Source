@@ -3,10 +3,10 @@
 ## Frontend / backend ayrımı
 
 - `frontend/`: HTML, CSS, JavaScript ve Cloudflare Pages yapılandırması. Pages root directory: `frontend`; build command: `npm run build`; output: `dist`.
-- `backend/`: FastAPI, veritabanı modelleri, Alembic migration'ları, SQL katalog ve Python kurulum araçları. Render root directory: `backend`.
+- `backend/`: FastAPI, veritabanı modelleri, Alembic migration'ları, SQL katalog ve Python kurulum araçları. Render proje kökünden çalışır.
 - `tests/`: backend entegrasyon ve frontend testleri; `docs/`: ortak belgeler.
 
-Frontend `/api/*` isteklerini Pages Function üzerinden Render'a iletir. Böylece tarayıcı oturumları aynı origin üzerinde kalır. Pages yayınlandıktan sonra Render `PUBLIC_ORIGIN` değerini Pages adresine, `SERVE_FRONTEND` değerini `false` yapın. Yerel geliştirme ve mevcut Render komutları için kökteki uyumluluk girişleri korunur.
+Render, öğrenci arayüzünü ve API’yi aynı adreste sunar. Cloudflare Pages üzerinden açılan arayüz API isteklerini Render’a iletir.
 
 Ayrıntılar: [Frontend](frontend/README.md), [Backend](backend/README.md), [Canlı ortam](docs/deployment.md).
 
