@@ -67,17 +67,6 @@ function syncVerificationButton() {
   if (seconds) resendTimer = setTimeout(syncVerificationButton, 1000);
 }
 
-function syncVerificationStep(email, focusCode = false) {
-  const codeForm = root.querySelector('#verification-code');
-  const codeRequested = Boolean(verificationRequests.get(email)?.codeRequested);
-  if (codeForm.dataset.email !== email) {
-    codeForm.reset();
-    clearFormErrors(codeForm);
-    codeForm.dataset.email = email;
-  }
-  codeForm.hidden = !codeRequested;
-  if (codeRequested && focusCode) codeForm.elements.token.focus();
-}
 let modalTrigger=null;
 function moveModalToasts(){modal.querySelectorAll('.modal-feedback .toast').forEach(item=>document.querySelector('#toasts').append(item));}
 async function closeModal(force=false){if(savingCourses && !force)return false;if(!force && !await canLeave(modal))return false;moveModalToasts();if(modal.open) modal.close(); modal.innerHTML='';if(modalTrigger?.isConnected)modalTrigger.focus({preventScroll:true});else root.querySelector('main')?.focus({preventScroll:true});return true; }
@@ -121,10 +110,10 @@ function renderAuth() {
   </div>${siteFooter()}`;
   prepareAccessibility(root);
   syncVerificationButton();
-  if (mode === 'verify') syncVerificationStep(verificationEmail(state.email));
+  if (mode === 'verify') root.querySelector('#verify-token').focus();
 }
 function microsoftSignIn(){return state.config.microsoft_login_enabled ? `<a class="btn light wide microsoft-login" href="/api/v1/auth/microsoft/start">Okul Microsoft hesabıyla giriş yap</a><p class="muted">Haliç öğrenci hesabını Microsoft ekranında doğrula.</p>` : '';}
-function loginView(){ return `<h1>Öğrenci girişi</h1>${microsoftSignIn()}<form data-form="login"><div class="field"><label for="login-email">Okul e-posta adresin</label><input id="login-email" name="email" type="email" autocomplete="username" required placeholder="ogrenci_no@ogr.halic.edu.tr" value="${e(state.email)}"></div><div class="field"><label for="login-password">Parolan</label><div class="login-password"><input id="login-password" name="password" type="password" autocomplete="current-password" required maxlength="128" placeholder="Parolanı gir"><button type="button" data-action="toggle-login-password" aria-controls="login-password" aria-label="Parolayı göster">Göster</button></div><button type="button" class="text-btn forgot-password" data-action="auth-recover">Parolamı unuttum</button></div><div class="form-error"></div><button class="btn primary wide" type="submit">Giriş yap ${icon('arrow')}</button></form><div class="auth-bottom">Hesabın yok mu? <button class="text-btn" data-action="auth-register">Kayıt ol</button></div><div class="auth-bottom"><button class="text-btn" data-action="auth-verify">Adresimi doğrula</button></div>`; }
+function loginView(){ return `<h1>Öğrenci Girişi </h1>${microsoftSignIn()}<form data-form="login"><div class="field"><label for="login-email">Okul e-posta adresin</label><input id="login-email" name="email" type="email" autocomplete="username" required placeholder="ogrenci_no@ogr.halic.edu.tr" value="${e(state.email)}"></div><div class="field"><label for="login-password">Parolan</label><div class="login-password"><input id="login-password" name="password" type="password" autocomplete="current-password" required maxlength="128" placeholder="Parolanı gir"><button type="button" data-action="toggle-login-password" aria-controls="login-password" aria-label="Parolayı göster">Göster</button></div><button type="button" class="text-btn forgot-password" data-action="auth-recover">Parolamı unuttum</button></div><div class="form-error"></div><button class="btn primary wide" type="submit">Giriş yap ${icon('arrow')}</button></form><div class="auth-bottom">Hesabın yok mu? <button class="text-btn" data-action="auth-register">Kayıt ol</button></div><div class="auth-bottom"><button class="text-btn" data-action="auth-verify">Doğrulama kodum var</button></div>`; }
 function registerView(){ return `<h1>Hesap oluştur</h1>${microsoftSignIn()}<p>Okul e-postanla kaydol, akademik alanını oluşturmaya başla.</p><form data-form="register"><div class="field"><label for="register-name">Adın ve soyadın</label><input id="register-name" name="full_name" autocomplete="name" required maxlength="200" placeholder="Ad Soyad"></div><div class="field"><label for="register-email">Okul e-posta adresin</label><input id="register-email" name="email" type="email" autocomplete="username" required placeholder="ogrenci_no@ogr.halic.edu.tr" value="${e(state.email)}"><small>Yalnızca @ogr.halic.edu.tr uzantılı öğrenci adresleri.</small></div><div class="field"><label for="register-password">Bir parola belirle</label><input id="register-password" name="password" type="password" autocomplete="new-password" required minlength="12" maxlength="128" placeholder="En az 12 karakter"><small>Başka hesaplarında kullanmadığın bir parola seç.</small></div><p class="registration-notice">Hesap ve akademik verilerinin kullanımı için <a href="#/legal/privacy">Gizlilik</a> ve <a href="#/legal/kvkk">KVKK aydınlatma taslağını</a> inceleyebilirsin.</p><div class="form-error"></div><button class="btn primary wide" type="submit">Hesabımı oluştur ${icon('arrow')}</button></form><div class="auth-bottom"><button class="text-btn" data-action="auth-login">Giriş ekranına dön</button></div>`; }
 function recoveryView() {
   return `<h1>Parolamı unuttum</h1>
@@ -158,19 +147,8 @@ function showResetFields() {
 function verifyView() {
   return `<div class="verify-icon">${icon('mail')}</div>
     <h1>E-postanı doğrula</h1>
-    <p>Okul e-posta adresine bir doğrulama kodu iste.</p>
-    <form data-form="send-verification">
-      <div class="field">
-        <label for="verify-email">Okul e-posta adresin</label>
-        <div class="verification-email">
-          <input id="verify-email" name="email" type="email" autocomplete="email" required value="${e(state.email)}" placeholder="Öğrenci e-postan">
-          <button class="btn primary" type="submit" aria-controls="verification-code">Kod gönder</button>
-        </div>
-      </div>
-      <div class="form-error"></div>
-    </form>
-    <form id="verification-code" data-form="verify" hidden>
-      <p class="verification-note">Kod, kayıtlı ve doğrulanmamış adreslere gönderilir. Adresini daha önce doğruladıysan giriş yapabilirsin.</p>
+    <p>Okul e-postana gelen kodu buraya yapıştır.</p>
+    <form id="verification-code" data-form="verify">
       <div class="field">
         <label for="verify-token">Doğrulama kodu</label>
         <input id="verify-token" name="token" autocomplete="one-time-code" required minlength="43" maxlength="43" spellcheck="false" placeholder="E-postadaki kodun tamamını yapıştır">
@@ -179,6 +157,21 @@ function verifyView() {
       <div class="form-error"></div>
       <button class="btn primary wide" type="submit">E-postamı doğrula ${icon('check')}</button>
     </form>
+    <details class="verification-help">
+      <summary>Kod gelmedi veya süresi doldu</summary>
+      <p>Spam klasörünü kontrol et. Gerekirse okul adresine yeni bir kod iste.</p>
+      <form data-form="send-verification">
+        <div class="field">
+          <label for="verify-email">Okul e-posta adresin</label>
+          <div class="verification-email">
+            <input id="verify-email" name="email" type="email" autocomplete="email" required value="${e(state.email)}" placeholder="Öğrenci e-postan">
+            <button class="btn primary" type="submit">Kod gönder</button>
+          </div>
+        </div>
+        <div class="form-error"></div>
+      </form>
+      <p class="verification-note">Adresini daha önce doğruladıysan e-postan ve parolanla giriş yapabilirsin.</p>
+    </details>
     <div class="auth-bottom"><button class="text-btn" data-action="auth-login">Giriş ekranına dön</button></div>
     ${state.config.local_mailbox ? `<div class="mail-note">Yerel geliştirme ortamında doğrulama kodunu test posta kutusunda bulabilirsin.<br><a href="http://127.0.0.1:8025" target="_blank" rel="noopener noreferrer">Test posta kutusunu aç ${icon('arrow')}</a></div>` : ''}`;
 }
@@ -788,10 +781,10 @@ async function submitForm(form){
       catch(error){
         if(error.status !== 503) throw error;
         verificationRequests.set(state.email, {retryAt: Date.now() + error.retryAfter * 1000, codeRequested: false});
-        state.authMode='verify';renderAuth();toast(error.message,true);return;
+        state.authMode='verify';renderAuth();root.querySelector('.verification-help').open=true;toast(error.message,true);return;
       }
       verificationRequests.set(state.email, {retryAt: Date.now() + 60_000, codeRequested: true});
-      state.authMode='verify';renderAuth();toast('Hesabın oluşturuldu. Şimdi e-posta adresini doğrula.');
+      state.authMode='verify';renderAuth();toast('Hesabın oluşturuldu. Okul e-postana gelen kodu gir.');
     }else if(type==='request-reset'){
       const email = verificationEmail(data.email);
       if (recoveryRequests.get(email)?.retryAt > Date.now()) return;
@@ -826,11 +819,12 @@ async function submitForm(form){
         const codeForm = root.querySelector('#verification-code');
         codeForm.reset();
         clearFormErrors(codeForm);
-        syncVerificationStep(email, true);
+        form.closest('details').open = false;
+        codeForm.elements.token.focus();
         toast(response.message);
       }
     }else if(type==='verify'){
-      const email = form.dataset.email;
+      const email = verificationEmail(state.email);
       await api('/auth/verify-email',{method:'POST',body:{token:data.token.trim()},quiet401:true});
       verificationRequests.delete(email);
       state.email = email;
@@ -950,7 +944,6 @@ root.addEventListener('input', event => {
   if (event.target.id !== 'verify-email') return;
   state.email = verificationEmail(event.target.value);
   event.target.form.querySelector('.form-error').textContent = '';
-  syncVerificationStep(state.email);
   syncVerificationButton();
 });
 document.addEventListener('submit',event=>{const form=event.target.closest('form[data-form]');if(form){event.preventDefault();submitForm(form);}});

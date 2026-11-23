@@ -61,8 +61,13 @@ def resend_verification(db: Session, email: str, mailer: VerificationMailer):
         db.rollback()
         return
     token = replace_verification(db, user)
+    try:
+        db.flush()
+        deliver_verification(mailer, email, token)
+    except HTTPException:
+        db.rollback()
+        raise
     db.commit()
-    deliver_verification(mailer, email, token)
 
 
 def verify_email(db: Session, token: str):

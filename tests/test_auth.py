@@ -105,6 +105,17 @@ def test_resend_invalidates_old_token_and_expired_tokens_fail(auth_app):
     assert verify(env).status_code == 200
 
 
+def test_failed_resend_keeps_first_code_usable(auth_app):
+    env = auth_app
+    assert register(env).status_code == 201
+    first_code = env.mailer.messages[-1]['token']
+    expire_limits(env)
+    env.mailer.fail = True
+    assert env.client.post('/api/v1/auth/resend-verification', json={'email': EMAIL}).status_code == 503
+    assert verify(env, first_code).status_code == 200
+    assert login(env).status_code == 200
+
+
 def test_resend_does_not_disclose_account_presence(auth_app):
     env = auth_app
     unknown = env.client.post('/api/v1/auth/resend-verification', json={'email': EMAIL})
