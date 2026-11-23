@@ -102,7 +102,8 @@ def authenticate(db: Session, email: str, password: str) -> User:
     if user is None or not valid or not user.is_active:
         raise HTTPException(401, 'E-posta veya parola hatalı.', headers={'WWW-Authenticate': 'Bearer'})
     if user.email_verified_at is None:
-        raise HTTPException(403, 'Giriş yapmadan önce e-posta adresinizi doğrulayın.')
+        raise HTTPException(403, 'Giriş yapmadan önce e-posta adresinizi doğrulayın.',
+                            headers={'X-HalicMind-Error': 'email_verification_required'})
     return user
 
 

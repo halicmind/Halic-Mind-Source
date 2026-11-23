@@ -1,10 +1,11 @@
 import asyncio
 from contextlib import asynccontextmanager
 from pathlib import Path
-from fastapi import FastAPI, HTTPException
+from urllib.parse import urlsplit
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.exception_handlers import request_validation_exception_handler
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy import text
@@ -35,7 +36,9 @@ if SERVE_FRONTEND:
 
 
 @app.get('/', include_in_schema=False)
-def student_interface():
+def student_interface(request: Request):
+    if settings.public_origin and request.url.netloc != urlsplit(settings.public_origin).netloc:
+        return RedirectResponse(settings.public_origin + '/', status_code=307)
     if SERVE_FRONTEND:
         return FileResponse(FRONTEND_ROOT / 'index.html', headers={'Cache-Control': 'no-cache'})
     return {'application': settings.application_name, 'service': 'api', 'docs': '/docs', 'health': '/health'}
