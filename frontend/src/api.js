@@ -1,5 +1,5 @@
 export class ApiError extends Error {
-  constructor(message, status, retryAfter = 0, fields = {}) { super(message); this.status = status; this.retryAfter = retryAfter; this.fields = fields; }
+  constructor(message, status, retryAfter = 0, fields = {}, code = null) { super(message); this.status = status; this.retryAfter = retryAfter; this.fields = fields; this.code = code; }
 }
 let onUnauthorized = () => {};
 export function setUnauthorizedHandler(handler) { onUnauthorized = handler; }
@@ -37,7 +37,12 @@ export async function api(path, {method='GET',body,form=false,quiet401=false,sig
     if (response.status === 401 && !quiet401) onUnauthorized();
     const retry = Number(response.headers.get('Retry-After') || 0);
     const fields={};if(Array.isArray(data?.detail))for(const error of data.detail){const name=error.loc?.at(-1);if(name && name!=='body')fields[name]=errorMessage({detail:[error]});}
-    throw new ApiError(errorMessage(data) + (response.status === 429 && retry ? ` ${retry} saniye sonra tekrar deneyebilirsin.` : ''), response.status, retry, fields);
+    let code = response.headers.get('X-HalicMind-Error');
+    // The frontend and API can deploy separately. Recognize the older login response too.
+    if (!code && path === '/auth/login' && response.status === 403 && data?.detail === 'Giriş yapmadan önce e-posta adresinizi doğrulayın.') {
+      code = 'email_verification_required';
+    }
+    throw new ApiError(errorMessage(data) + (response.status === 429 && retry ? ` ${retry} saniye sonra tekrar deneyebilirsin.` : ''), response.status, retry, fields, code);
   }
   return data;
 }

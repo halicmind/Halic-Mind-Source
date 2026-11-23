@@ -48,7 +48,9 @@ def test_register_verify_login_and_me(auth_app):
     assert row['hashed_password'].startswith('$argon2id$')
     assert verify_password(PASSWORD, row['hashed_password'])
     assert row['email_verified_at'] is None and row['is_active'] is True
-    assert login(env).status_code == 403
+    pending = login(env)
+    assert pending.status_code == 403
+    assert pending.headers['X-HalicMind-Error'] == 'email_verification_required'
     challenge = env.connection.scalar(text('SELECT token_hash FROM email_verifications'))
     raw = env.mailer.messages[-1]['token']
     assert challenge == hash_verification_token(raw) and challenge != raw

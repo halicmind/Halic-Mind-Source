@@ -773,7 +773,10 @@ async function submitForm(form){
     if(type==='login'){
       state.email=data.email.trim().toLowerCase();
       try{await api('/auth/login',{method:'POST',form:true,body:{username:state.email,password:data.password},quiet401:true});}
-      catch(error){if(error.status===403){state.authMode='verify';renderAuth();toast('Giriş yapmadan önce okul adresini doğrula.',true);return;}throw error;}
+      catch(error){
+        if(error.status!==403 || error.code!=='email_verification_required') throw error;
+        state.authMode='verify';renderAuth();toast(error.message,true);return;
+      }
       state.user=await api('/users/me');state.historyYear='';await loadWorkspace();location.hash=state.profile?'/overview':'/profile';render();toast('Hoş geldin.');
     }else if(type==='register'){
       state.email=data.email.trim().toLowerCase();
