@@ -18,7 +18,7 @@ Set secrets in Render Environment, never in Git:
 - `JWT_SECRET_KEY`: an independent random secret of at least 32 characters.
 - `PUBLIC_ORIGIN=https://halic-mind-source.onrender.com` and `SERVE_FRONTEND=true`.
 - `MAIL_PROVIDER=gmail`, `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN`, `GMAIL_SENDER=halicmind@gmail.com`.
-- `EXAM_SYNC_ENABLED=false`: the free server sleeps, so continuous polling cannot be guaranteed.
+- `EXAM_SYNC_ENABLED=true`: the Render service checks official exam sources on startup and hourly while awake.
 
 The supplied development env points to localhost. Do not upload it as production configuration. MCP authorization is separate from application database credentials; it does not supply a database password.
 

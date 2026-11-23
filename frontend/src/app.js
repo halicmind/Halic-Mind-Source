@@ -838,7 +838,9 @@ async function submitForm(form){
       state.profile=await api('/users/me/academic-profile',{method:'PUT',body:{program_id:Number(data.program_id),curriculum_id:Number(data.curriculum_id),entry_year:Number(data.entry_year),preparation_status:data.preparation_status,current_class:Number(data.current_class)}});
       if(previousPreparation!==state.profile.preparation_status)state.termId=preferredTerm()?.id || null;
       cleanForm(form);
-      if(first)location.hash='/profile';render();toast(first?'Profilin hazır. İlk dönemini oluşturarak devam edebilirsin.':'Akademik profilin güncellendi.');
+      if(first) location.hash='/overview';
+      render();
+      toast(first?'Profilin hazır. İlk dönemini oluşturarak devam edebilirsin.':'Akademik profilin güncellendi.');
     }else if(type==='term'){
       const editing=Boolean(form.dataset.id), prep=form.elements.is_preparation.checked;
       const body={academic_year:Number(data.academic_year),term_type:data.term_type,curriculum_period_kind:prep || !data.curriculum_period_number?null:form.elements.curriculum_period_kind.value,curriculum_period_number:prep || !data.curriculum_period_number?null:Number(data.curriculum_period_number)};

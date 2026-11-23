@@ -52,6 +52,7 @@ class Settings(BaseSettings):
         if self.render_external_url == RENDER_ORIGIN:
             self.public_origin = RENDER_ORIGIN
             self.serve_frontend = True
+            self.exam_sync_enabled = True
         if self.public_origin:
             from urllib.parse import urlsplit
             origin = urlsplit(self.public_origin)
