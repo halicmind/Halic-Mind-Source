@@ -2,7 +2,9 @@ import { cp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 const root = new URL('./', import.meta.url);
 const output = new URL('dist/', root);
-if (fileURLToPath(output) !== fileURLToPath(new URL('dist/', root))) throw new Error('Invalid build output');
+if (!fileURLToPath(output).startsWith(fileURLToPath(root)) || fileURLToPath(output) === fileURLToPath(root)) {
+  throw new Error('Build output must stay inside the frontend directory');
+}
 await rm(output, { recursive: true, force: true });
 await mkdir(new URL('assets/', output), { recursive: true });
 await cp(new URL('src/', root), new URL('assets/', output), { recursive: true });
