@@ -36,7 +36,7 @@ def announcement_context(title):
     exam = {value for key,value in kinds if key in text}
     if 'makeup' in exam and len(exam - {'makeup'}) == 1:
         exam = {'makeup'}
-    terms = {value for key,value in [('guz','fall'),('fall','fall'),('bahar','spring'),('spring','spring'),('yaz','summer'),('summer','summer')] if re.search(r'\b'+key+r'\b', text)}
+    terms = {value for key,value in [('guz','fall'),('fall','fall'),('bahar','spring'),('spring','spring'),('yaz','summer'),('summer','summer'),('yillik','annual'),('annual','annual')] if re.search(r'\b'+key+r'\b', text)}
     if len(exam) != 1 or len(terms) != 1 or not any(word in text for word in ('program','takvim','schedule')):
         return None
     return dict(academic_year=int(year[1]),term_type=terms.pop(),exam_type=exam.pop())
@@ -76,10 +76,11 @@ ALIASES = {
     'code': {'ders kodu','course code','dersin kodu'},
     'name': {'ders adi','course name','dersin adi'},
     'date': {'sinav tarihi','sinav gunu','exam date','tarih','date'},
-    'time': {'sinav saati','exam time','saat','time','baslangic saati'},
-    'room': {'derslik','salon','sinav salonu','sinav yeri','classroom','room','derslik oda kodlari'},
+    'time': {'sinav saati','exam time','saat','time','baslangic saati','sinav baslangic','sinav baslangic saati','sinav bas saati'},
+    'room': {'derslik','salon','sinav salonu','sinav yeri','classroom','room','derslik oda kodlari','sinavin yapilacagi derslik'},
     'program': {'bolum','program','program adi','bolum adi','department'},
-    'section': {'sube','grup','section','group','subesi'},
+    'section': {'sube','grup','section','group','subesi','sube kodu'},
+    'shared_sections': {'ders acilan sube'},
 }
 
 
@@ -98,7 +99,7 @@ def parse_date(value):
         return value.date()
     if isinstance(value,date):
         return value
-    text = str(value or '').strip()
+    text = ' '.join(str(value or '').split())
     # Official exports append the Turkish weekday to an ISO calendar date.
     text = re.sub(r' (Pazartesi|Salı|Çarşamba|Perşembe|Cuma|Cumartesi|Pazar)$','',text,flags=re.IGNORECASE)
     for fmt in ('%d.%m.%Y','%d/%m/%Y','%Y-%m-%d','%d-%m-%Y'):
@@ -181,7 +182,7 @@ def parse_sheet(rows, sheet, context):
                     raise ValueError('Ders kodu/adı eksik veya biçimi tanınmadı.')
                 expanded.append(dict(code=values['code'],name=values['name'],starts_at=at.isoformat(),
                     room=str(cell('room') or '').strip()[:300],program=values['program'][:300],
-                    section=values['section'][:100],sheet=sheet,source_row=line,
+                    section=(values['section'] or str(cell('shared_sections') or '').strip())[:100],sheet=sheet,source_row=line,
                     row=line if count==1 else candidate_id(line, index+1)))
             output.extend(expanded)
         except (ValueError,TypeError):
@@ -212,7 +213,25 @@ def read_excel(data, context):
             for sheet in workbook:
                 if sheet.max_column and sheet.max_column>100:
                     raise ValueError('Excel sütun sınırı aşıldı.')
-                rows,notes=parse_sheet(sheet.iter_rows(values_only=True),sheet.title,context)
+                max_row = sheet.max_row
+                if max_row and max_row > 20000:
+                    # Some official exports style empty cells down to Excel's last row.
+                    # Keep the physical row limit for every cell containing data.
+                    from defusedxml.ElementTree import iterparse
+                    from openpyxl.utils.cell import coordinate_to_tuple
+                    with ZipFile(BytesIO(data)) as archive, archive.open(sheet._worksheet_path) as xml:
+                        max_row = 1
+                        for _, node in iterparse(xml, events=('end',)):
+                            if node.tag.endswith('}c'):
+                                if len(node):
+                                    row_number, column = coordinate_to_tuple(node.attrib['r'])
+                                    if row_number > 20000 or column > 100:
+                                        raise ValueError('Excel boyut sınırı aşıldı.')
+                                    max_row = max(max_row, row_number)
+                                node.clear()
+                            elif node.tag.endswith('}row'):
+                                node.clear()
+                rows,notes=parse_sheet(sheet.iter_rows(max_row=max_row,values_only=True),sheet.title,context)
                 output.extend(rows);warnings.extend(notes)
         finally:
             workbook.close()

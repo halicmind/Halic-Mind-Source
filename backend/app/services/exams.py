@@ -25,6 +25,12 @@ def calendar_for_term(term, degree_level):
     return result
 
 
+def published_term_types(term):
+    if term.term_type == 'annual':
+        return ('annual', 'fall', 'spring')
+    return (term.term_type,)
+
+
 def list_calendars(db, user_id):
     terms = db.scalars(select(AcademicTerm).where(AcademicTerm.user_id == user_id).order_by(AcademicTerm.academic_year.desc(), AcademicTerm.id.desc())).all()
     levels = dict(db.execute(text('SELECT id, degree_level FROM programs')).all())
@@ -37,7 +43,7 @@ def list_calendars(db, user_id):
             case((verified_document(db, freshness_cutoff()), 'imported'),
                  (ExamDocument.status == 'imported', 'stale'), else_=ExamDocument.status).label('status')
         ).where(ExamDocument.current.is_(True), ExamDocument.academic_year==term.academic_year,
-                ExamDocument.term_type==term.term_type).order_by(ExamDocument.title, ExamDocument.file_url)).mappings().all()
+                ExamDocument.term_type.in_(published_term_types(term))).order_by(ExamDocument.title, ExamDocument.file_url)).mappings().all()
         item['exams']=match_term(db,user_id,term)
         result.append(item)
     return result

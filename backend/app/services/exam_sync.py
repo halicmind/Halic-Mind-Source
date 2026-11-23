@@ -18,7 +18,22 @@ from bs4 import BeautifulSoup
 from app.services.exam_files import announcement_context, official_url, announcement_links, file_links, read_excel, next_listing_page
 
 logger=logging.getLogger(__name__)
-SEEDS=('https://halic.edu.tr/tr/tum-duyurular', 'https://halic.edu.tr/tr/tum-duyurular/duyurular-muhendislik-fakultesi', 'https://halic.edu.tr/tr/akademik/fakulteler/fen-edebiyat-fakultesi', 'https://halic.edu.tr/tr/akademik/fakulteler/guzel-sanatlar-fakultesi', 'https://halic.edu.tr/tr/akademik/fakulteler/isletme-fakultesi', 'https://halic.edu.tr/tr/akademik/fakulteler/mimarlik-fakultesi', 'https://halic.edu.tr/tr/akademik/fakulteler/muhendislik-fakultesi', 'https://halic.edu.tr/tr/akademik/fakulteler/saglik-bilimleri-fakultesi', 'https://halic.edu.tr/tr/akademik/fakulteler/spor-bilimleri-fakultesi', 'https://halic.edu.tr/tr/akademik/fakulteler/tip-fakultesi', 'https://halic.edu.tr/tr/akademik/yuksekokullar/konservatuvar', 'https://halic.edu.tr/tr/akademik/yuksekokullar/yabanci-diller-yuksekokulu')
+LISTING = 'https://halic.edu.tr/tr/tum-duyurular'
+ACADEMIC_UNITS = (
+    'muhendislik-fakultesi',
+    'fen-edebiyat-fakultesi',
+    'guzel-sanatlar-fakultesi',
+    'isletme-fakultesi',
+    'mimarlik-fakultesi',
+    'saglik-bilimleri-fakultesi',
+    'spor-bilimleri-fakultesi',
+    'tip-fakultesi',
+    'konservatuvar',
+    'yabanci-diller-yuksekokulu',
+    'meslek-yuksekokulu',
+    'lisansustu-egitim-enstitusu',
+)
+SEEDS = (LISTING, *(f'{LISTING}/duyurular-{unit}' for unit in ACADEMIC_UNITS))
 
 
 class OfficialRedirect(HTTPRedirectHandler):
@@ -68,13 +83,15 @@ def store_document(db, url, announcement, info, data):
     now=datetime.now(timezone.utc)
     if not existing and any(doc.checksum==checksum for doc in previous):
         raise ValueError('Aynı dosyanın akademik yıl/dönem bilgisi değişti; inceleme gerekiyor.')
+    rows,warnings=read_excel(data,info)
     if existing:
+        existing.rows = rows
+        existing.warnings = warnings
         for doc in previous:
             doc.current=doc.id==existing.id
         existing.checked_at=now
         existing.status='imported' if existing.rows and not existing.warnings else 'review'
         return existing
-    rows,warnings=read_excel(data,info)
     # A partially parsed replacement cannot silently preserve potentially outdated exact dates.
     status='imported' if rows and not warnings else 'review'
     for doc in previous:

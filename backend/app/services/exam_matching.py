@@ -7,10 +7,16 @@ from app.models.exam import ExamDocument, ExamSelection, ExamSyncState
 from app.services.exam_files import normalized, course_key, selectable_rows
 
 
-def candidates_for(course, program_name, documents):
+def candidates_for(course, program_name, documents, *, preparation=False):
     groups=defaultdict(list)
     for doc in documents:
+        source = normalized(f'{doc.title} {doc.file_url.rsplit("/", 1)[-1]}').split()
+        prep_source = 'hazirlik' in source or 'preparatory' in source or 'preparation' in source
         for row in selectable_rows(doc.rows):
+            row_program = normalized(row.get('program')).split()
+            prep_row = prep_source or any(word in row_program for word in ('hazirlik', 'preparation', 'preparatory'))
+            if preparation != prep_row:
+                continue
             if course_key(row['code'])!=course_key(course.course_code) or normalized(row['name'])!=normalized(course.course_name):
                 continue
             if row.get('program') and normalized(row['program'])!=normalized(program_name):
@@ -61,10 +67,8 @@ def last_known_documents(db, term, cutoff):
 
 
 def match_term(db, user_id, term):
-    if term.is_preparation:
-        return []  # Preparation needs a separate exam policy and source adapter.
     program=db.execute(text('SELECT name_tr, degree_level FROM programs WHERE id=:id'),{'id':term.program_id}).first()
-    if not program or program.degree_level not in {'associate','bachelor'}:
+    if not program:
         return []
     cutoff=freshness_cutoff()
     docs=db.scalars(select(ExamDocument).where(verified_document(db, cutoff),
@@ -73,15 +77,15 @@ def match_term(db, user_id, term):
     previous_docs = last_known_documents(db, term, cutoff)
     result=[]
     for course in courses:
-        groups=candidates_for(course,program.name_tr,docs)
+        groups=candidates_for(course,program.name_tr,docs,preparation=term.is_preparation)
         selections=db.scalars(select(ExamSelection).where(ExamSelection.enrollment_id==course.id,ExamSelection.user_id==user_id)).all()
-        last_known = candidates_for(course, program.name_tr, previous_docs)
+        last_known = candidates_for(course, program.name_tr, previous_docs, preparation=term.is_preparation)
         for previous in selections:
             current = groups.get(previous.exam_type, [])
             if any(item['document_id'] == previous.document_id for item in current):
                 continue
             doc = db.get(ExamDocument, previous.document_id)
-            rows = candidates_for(course, program.name_tr, [doc])[previous.exam_type] if doc else []
+            rows = candidates_for(course, program.name_tr, [doc], preparation=term.is_preparation)[previous.exam_type] if doc else []
             last_known[previous.exam_type] = [item for item in rows if
                 item['sheet'] == previous.sheet and item['row'] == previous.row_number]
         for kind, rows in last_known.items():

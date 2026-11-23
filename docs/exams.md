@@ -8,7 +8,7 @@ FastAPI açıkken arka plandaki görev başlangıçta ve varsayılan saatte bir 
 
 `EXAM_SYNC_ENABLED` varsayılan `true`, `EXAM_SYNC_INTERVAL_SECONDS` varsayılan `3600` (en az 300) değerindedir. TLS doğrulaması sistem sertifika deposuyla yapılır; özel kurum CA dosyası gerekiyorsa `EXAM_SYNC_CA_BUNDLE` kullanılır. Sertifika doğrulaması kapatılmaz.
 
-Kaynaklar `app/services/exam_sync.py` içindeki açık listededir: genel duyurular, Mühendislik duyuru listesi, resmi sitedeki fakülte/yüksekokul giriş sayfaları. Genel listelerde en fazla üç sayfa izlenir; bilinen güncel dosyaların duyuruları sonraki turlarda ayrıca kontrol edilir. Duyurunun akademik yılı, dönemi ve sınav türü hem bağlantı metninden hem kendi başlığından doğrulanır. Yalnızca içinde bulunulan akademik yıl, bir önceki ve bir sonraki yılın ilgili duyuruları indirilir. Bir yıla ait dosya başka yıla taşınmaz.
+Kaynaklar `app/services/exam_sync.py` içindeki açık listededir: genel duyurular, sekiz fakülte, konservatuvar, Yabancı Diller Yüksekokulu, Meslek Yüksekokulu ve Lisansüstü Eğitim Enstitüsü için resmî birim duyuru arşivleri. Genel listelerde en fazla üç sayfa izlenir; bilinen güncel dosyaların duyuruları sonraki turlarda ayrıca kontrol edilir. Duyurunun akademik yılı, dönemi ve sınav türü hem bağlantı metninden hem kendi başlığından doğrulanır. Yalnızca içinde bulunulan akademik yıl, bir önceki ve bir sonraki yılın ilgili duyuruları indirilir. Bir yıla ait dosya başka yıla taşınmaz.
 
 Tarama yaklaşık 100 saniyelik iş bütçesi, istek başına 12 saniye timeout, 30 duyuru, duyuru başına 25 dosya ve dosya başına 10 MB sınırı kullanır. HTTP yönlendirmeleri dahil yalnızca `https://halic.edu.tr` ve `https://www.halic.edu.tr` kabul edilir. Sınırlar aşıldığında ekranda eksik kontrol bilgisi verilir. Tüm üniversite arşivinin eksiksiz tarandığı iddia edilmez.
 
@@ -26,7 +26,7 @@ XLSX ve eski XLS okunur. Makrolar çalıştırılmaz; formüller hesaplanmaz. ZI
 
 Haliç'in gerçek dışa aktarımındaki `SINAV GÜNÜ`, `BAŞLANGIÇ SAATİ`, `DERS KODU`, `DERS ADI`, `PROGRAM ADI`, `ŞUBE`, `DERSLİK/ODA KODLARI` başlıkları desteklenir. Noktalı virgülle birleştirilmiş ders/program/şube listeleri yalnızca adetleri uyumluysa ayrılır; tek değer ortak değer olarak kullanılabilir. Kaynak sayfa ve satır bilgisi korunur. Öğretim elemanı, öğrenci listesi veya öğrenci sayısı aktarılmaz.
 
-Aktif ve devam eden kişisel dersler; dönem/yıl, normalize ders kodu, ders adı ve varsa program adı ile eşleşir. Benzer ders adına göre tahmin yapılmaz. Başka programa ait açık satır dışlanır. Hazırlık, lisansüstü ve yıllık planlar için ayrı doğrulanmış adaptör henüz yoktur.
+Aktif ve devam eden kişisel dersler; dönem/yıl, normalize ders kodu, ders adı ve varsa program adı ile eşleşir. Benzer ders adına göre tahmin yapılmaz. Başka programa ait açık satır dışlanır. Ders eşleştirmesi lisansüstü programları da kapsar. Yıllık dönemlerde güz ve bahar dosyaları kaynak listesine ve ders aramasına dahildir. Hazırlık dönemlerinde ders ve program eşleşmesine ek olarak kaynakta açık bir hazırlık ibaresi aranır.
 
 Program bilgisi de doğrulanmış tek ve şubesiz eşleşme otomatik gösterilir. Bölüm bilgisi eksik satırlar seçim gerektirir. Şube varsa veya birden fazla saat/yer bulunuyorsa öğrenci adaylar arasından seçim yapar; sahiplik sunucuda denetlenir. Aynı sınavın tüm-liste/fakülte kopyaları aynı olay olarak birleştirilir. Birden fazla salon içeren satır kişisel salon ataması olarak yorumlanmaz.
 
