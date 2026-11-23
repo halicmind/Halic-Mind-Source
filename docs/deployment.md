@@ -4,7 +4,7 @@
 
 Existing service: `Halic-Mind-Source`, https://halic-mind-source.onrender.com.
 
-- Root directory: `backend`. Python: 3.12 (`backend/.python-version`).
+- Root directory: repository root. Python: 3.12 (`backend/.python-version`).
 - Build: `pip install -r requirements.txt -c requirements.lock.txt`.
 - Start: `python -m scripts.start_production`.
 - Health check: `/health`.
@@ -16,7 +16,7 @@ Set secrets in Render Environment, never in Git:
 - `DATABASE_URL`: Supabase Connect → Session pooler URI, with URL-encoded password and `sslmode=require`. The `postgresql://` scheme is accepted. Use session mode, not transaction mode: catalog import contains multi-statement SQL and uses session settings.
 - `DATABASE_SCHEMA=halicmind`: creates a private schema and keeps app tables out of Supabase's exposed `public` schema. Do not add this schema to the Data API exposed schemas.
 - `JWT_SECRET_KEY`: an independent random secret of at least 32 characters.
-- `PUBLIC_ORIGIN=https://halic-mind-source.onrender.com`, then change to the exact Pages HTTPS origin when Pages is deployed. No wildcard origins.
+- `PUBLIC_ORIGIN=https://halic-mind-source.onrender.com` and `SERVE_FRONTEND=true`.
 - `MAIL_PROVIDER=gmail`, `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN`, `GMAIL_SENDER=halicmind@gmail.com`.
 - `EXAM_SYNC_ENABLED=false`: the free server sleeps, so continuous polling cannot be guaranteed.
 
@@ -48,7 +48,7 @@ Resend's testing sender cannot deliver verification emails to arbitrary students
 
 Root directory: `frontend`. Build command: `npm run build`. Output directory: `dist`. See `frontend/README.md` for the full Pages setup.
 
-Set `API_ORIGIN=https://halic-mind-source.onrender.com` in the Pages production environment. The Pages Function proxies `/api/*` to this fixed backend, preserving cookies and the browser's Origin. API responses are never cached. Static assets use Pages directly. Set Render `PUBLIC_ORIGIN` to the exact production Pages origin; login from other origins is intentionally rejected.
+Set `API_ORIGIN=https://halic-mind-source.onrender.com` in the Pages production environment. The Pages Function proxies `/api/*` to this fixed backend, preserving cookies and the browser's Origin. API responses are never cached. Static assets use Pages directly.
 
 Publish with a Cloudflare account/token that has Pages edit access. Preview deployments use separate origins; do not allow all preview origins for production sessions.
 

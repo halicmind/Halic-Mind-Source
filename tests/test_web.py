@@ -28,15 +28,15 @@ def test_student_shell_assets_and_security_headers():
     assert 'content-security-policy' not in client.get('/docs').headers
 
 
-def test_backend_home_redirects_to_configured_student_site(monkeypatch):
-    from app.core.config import settings
-    monkeypatch.setattr(settings, 'public_origin', 'https://student.example')
-    client = TestClient(app, follow_redirects=False)
+def test_render_serves_student_site_with_legacy_pages_settings():
+    from app.core.config import PAGES_ORIGIN, RENDER_ORIGIN, Settings
+    config = Settings(public_origin=PAGES_ORIGIN, render_external_url=RENDER_ORIGIN, serve_frontend=False)
+    assert config.public_origin == RENDER_ORIGIN
+    assert config.serve_frontend
+    client = TestClient(app, base_url=RENDER_ORIGIN, follow_redirects=False)
     response = client.get('/')
-    assert response.status_code == 307
-    assert response.headers['location'] == 'https://student.example/'
-    assert client.get('https://student.example/').status_code == 200
-    assert client.get('/api/v1/ui-config').status_code == 200
+    assert response.status_code == 200
+    assert '/assets/app.js' in response.text
 
 
 def test_cookie_login_refresh_csrf_and_logout(auth_app):
