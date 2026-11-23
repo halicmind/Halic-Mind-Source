@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createExamUI} from '../app/web/exam-ui.js';
+import {createExamUI} from '../frontend/src/exam-ui.js';
 const e=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const ui=createExamUI({e,icon:()=>'',button:(action,label,kind,glyph,attrs='')=>`<button data-action="${action}" ${attrs}>${label}</button>`,termPicker:()=>'',termLabel:()=>'',emptyState:(title,reason)=>`<p>${e(title)} ${e(reason)}</p>`});
 const state={terms:[{id:1}],termId:1,examCalendars:[{term_id:1,status:'unavailable',reason:'Takvim yok',exams:[]}],examSync:{enabled:true,status:'partial',checked_at:'2026-10-29T12:00:00Z',errors:[{url:'https://halic.edu.tr',message:'HTTP 403'}]}};

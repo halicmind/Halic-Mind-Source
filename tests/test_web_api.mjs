@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import test from 'node:test';
-const source=await readFile(new URL('../app/web/api.js',import.meta.url),'utf8');
+const source=await readFile(new URL('../frontend/src/api.js',import.meta.url),'utf8');
 const {api,ApiError}=await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
 test('422 errors retain field associations for inline feedback',async t=>{
  t.mock.method(globalThis,'fetch',async()=>new Response(JSON.stringify({detail:[{loc:['body','custom_course_code'],type:'string_too_short',msg:'Invalid',ctx:{min_length:1}}]}),{status:422}));

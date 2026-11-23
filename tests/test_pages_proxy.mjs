@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import worker from '../deploy/pages/worker.mjs';
+import worker from '../frontend/cloudflare/worker.mjs';
 
 test('Pages proxy preserves session, CSRF origin, body and cookies without caching', async () => {
   const previous = globalThis.fetch;

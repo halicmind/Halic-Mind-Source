@@ -7,7 +7,7 @@
 - `/#/legal/kvkk`: mevcut veri akışı ve açıkça işaretlenmiş aydınlatma taslağı.
 - `/#/legal/terms`: kullanım sınırları ve MIT lisansı; üniversitenin resmi kayıt sistemi olmadığı bilgisi.
 
-Metinler `app/web/legal.js` içinde bulunur. Kayıt formu, veri girişi sırasında Gizlilik ve KVKK bağlantılarını gösterir. Aydınlatma ile genel açık rıza tek bir zorunlu kutuda birleştirilmez. Mevcut sürüm reklam veya analiz çerezi kullanmadığı için isteğe bağlı çerezleri varmış gibi gösteren onay kutuları bulunmaz.
+Metinler `frontend/src/legal.js` içinde bulunur. Kayıt formu, veri girişi sırasında Gizlilik ve KVKK bağlantılarını gösterir. Aydınlatma ile genel açık rıza tek bir zorunlu kutuda birleştirilmez. Mevcut sürüm reklam veya analiz çerezi kullanmadığı için isteğe bağlı çerezleri varmış gibi gösteren onay kutuları bulunmaz.
 
 ## Eksik bilgiler
 

@@ -11,7 +11,7 @@ docker compose up -d postgres mailpit
 .venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-`app/web/` içindeki HTML, CSS, JavaScript modülleri ve SVG doğrudan FastAPI tarafından sunulur. Ayrı frontend sunucusu, paket kurulumu veya derleme adımı yoktur. Statik dosyalar `/assets/` altında; UI ve API aynı origin üzerindedir. Tarayıcı kodda değişiklikleri görmek için sayfayı yenilemelidir.
+`frontend/src/` içindeki HTML, CSS, JavaScript modülleri ve SVG doğrudan FastAPI tarafından sunulur. Yerelde FastAPI arayüzü de sunabilir. Canlı frontend Cloudflare Pages için `frontend/` içinde `npm run build` ile hazırlanır; çıktı `frontend/dist/` olur. Statik dosyalar `/assets/` altında; UI ve API aynı origin üzerindedir. Tarayıcı kodda değişiklikleri görmek için sayfayı yenilemelidir.
 
 ## Ekran akışı
 

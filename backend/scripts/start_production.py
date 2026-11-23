@@ -2,9 +2,11 @@
 import os
 import subprocess
 import sys
+from pathlib import Path
 
 
 def main():
+    os.chdir(Path(__file__).resolve().parents[1])
     import psycopg
     from psycopg import sql
     from app.core.config import settings

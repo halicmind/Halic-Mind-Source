@@ -4,7 +4,7 @@
 
 Existing service: `Halic-Mind-Source`, https://halic-mind-source.onrender.com.
 
-- Python: 3.12 (`.python-version`).
+- Root directory: `backend`. Python: 3.12 (`backend/.python-version`).
 - Build: `pip install -r requirements.txt -c requirements.lock.txt`.
 - Start: `python -m scripts.start_production`.
 - Health check: `/health`.
@@ -44,7 +44,7 @@ Resend's testing sender cannot deliver verification emails to arbitrary students
 
 ## Cloudflare Pages
 
-Build command: `node scripts/build_pages.mjs`. Output directory: `dist/pages`.
+Root directory: `frontend`. Build command: `npm run build`. Output directory: `dist`. See `frontend/README.md` for the full Pages setup.
 
 Set `API_ORIGIN=https://halic-mind-source.onrender.com` in the Pages production environment. The Pages Function proxies `/api/*` to this fixed backend, preserving cookies and the browser's Origin. API responses are never cached. Static assets use Pages directly. Set Render `PUBLIC_ORIGIN` to the exact production Pages origin; login from other origins is intentionally rejected.
 

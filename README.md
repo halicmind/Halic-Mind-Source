@@ -1,5 +1,15 @@
 # HalicMind
 
+## Frontend / backend ayrımı
+
+- `frontend/`: HTML, CSS, JavaScript ve Cloudflare Pages yapılandırması. Pages root directory: `frontend`; build command: `npm run build`; output: `dist`.
+- `backend/`: FastAPI, veritabanı modelleri, Alembic migration'ları, SQL katalog ve Python kurulum araçları. Render root directory: `backend`.
+- `tests/`: backend entegrasyon ve frontend testleri; `docs/`: ortak belgeler.
+
+Frontend `/api/*` isteklerini Pages Function üzerinden Render'a iletir. Böylece tarayıcı oturumları aynı origin üzerinde kalır. Pages yayınlandıktan sonra Render `PUBLIC_ORIGIN` değerini Pages adresine, `SERVE_FRONTEND` değerini `false` yapın. Yerel geliştirme ve mevcut Render komutları için kökteki uyumluluk girişleri korunur.
+
+Ayrıntılar: [Frontend](frontend/README.md), [Backend](backend/README.md), [Canlı ortam](docs/deployment.md).
+
 Haliç Üniversitesi öğrencilerinin bölümüne ve müfredatına uygun dersleri bulmasını, kişisel dönemlerini oluşturmasını ve ders geçmişini tek yerde tutmasını sağlayan web uygulaması.
 
 Proje, Advanced Computer Programming dersi kapsamında geliştiriliyor. Mevcut sürüm; akademik katalog, kullanıcı kaydı ve e-posta doğrulama, akademik profil, kişisel dönemler, ders yönetimi ve derslere bağlı ödev takibini kapsar. Resmi duyurulardan sınav takibi eklenmiştir; çalışma süresi takibi sonraki aşamadır.
@@ -115,8 +125,8 @@ docker compose up -d --wait postgres mailpit
 
 ## Yapılandırma ve gizli bilgiler
 
-- Uygulama ayarları: `app/core/config.py`. Varsayılan uygulama adı `HalicMind`; `.env` içindeki `APPLICATION_NAME` ile değiştirilebilir.
-- Ortak ders durumu ve dönem seçenekleri: `app/core/choices.py`.
+- Uygulama ayarları: `backend/app/core/config.py`. Varsayılan uygulama adı `HalicMind`; `.env` içindeki `APPLICATION_NAME` ile değiştirilebilir.
+- Ortak ders durumu ve dönem seçenekleri: `backend/app/core/choices.py`.
 - Yerel bağlantı: PostgreSQL `127.0.0.1:5433`, SMTP `127.0.0.1:1025`. Docker portları localhost ile sınırlıdır.
 - `.env`, `.venv` ve yerel PostgreSQL çalışma klasörü `.local/`, Git dışında tutulur. Gerçek parolaları, JWT anahtarlarını, kullanıcı verilerini ve veritabanı yedeklerini depoya eklemeyin.
 - Web girişi JWT’yi HttpOnly çerezde taşır ve JSON gövdesinde yalnızca başarı mesajı döndürür. Swagger/API girişinde `access_token`, `token_type` ve `expires_in` döner. **Parolamı unuttum** ekranındaki tek kullanımlık kod varsayılan olarak 15 dakika geçerlidir.
@@ -155,7 +165,7 @@ Katalog herkese açıktır; kişisel endpoint'ler aktif ve e-postası doğrulanm
 
 Katalog ile kullanıcı verilerinin şema yönetimi ayrıdır:
 
-- **Katalog:** `catalog/` altındaki SQL dosyaları `scripts.import_catalog` ile aktarılır. Aktarım transaction, advisory lock ve `catalog_migrations` içindeki SHA-256 kayıtlarıyla korunur. Uygulanmış SQL dosyaları değiştirilerek tekrar aktarılmaz. Modern Diller ortak seçmelilerini mevcut kuruluma eklemek için `python -m scripts.import_catalog` komutunu tekrar çalıştırın. İkinci katalog aktarımı, 20 Kasım 2026 tarihinde kontrol edilen [resmî Modern Diller ders planını](https://halic.edu.tr/tr/akademik/yuksekokullar/yabanci-diller-yuksekokulu/bolumler/modern-diller) kullanır.
+- **Katalog:** `backend/catalog/` altındaki SQL dosyaları `scripts.import_catalog` ile aktarılır. Aktarım transaction, advisory lock ve `catalog_migrations` içindeki SHA-256 kayıtlarıyla korunur. Uygulanmış SQL dosyaları değiştirilerek tekrar aktarılmaz. Modern Diller ortak seçmelilerini mevcut kuruluma eklemek için `python -m scripts.import_catalog` komutunu tekrar çalıştırın. İkinci katalog aktarımı, 20 Kasım 2026 tarihinde kontrol edilen [resmî Modern Diller ders planını](https://halic.edu.tr/tr/akademik/yuksekokullar/yabanci-diller-yuksekokulu/bolumler/modern-diller) kullanır.
 - **Uygulama:** Alembic, `DATABASE_URL` üzerinden kullanıcı ve akademik planlama tablolarını yönetir. Uygulama açılışında otomatik tablo oluşturulmaz.
 
 | Revision | Değişiklik |
@@ -168,7 +178,7 @@ Katalog ile kullanıcı verilerinin şema yönetimi ayrıdır:
 | `0006_exam_sources` | Resmi sınav dosyası sürümleri, kontrol durumu ve kişisel şube seçimi |
 | `0007_password_reset` | Tek kullanımlık parola sıfırlama kodları ve oturum sürümü |
 
-Katalog aktarımı uygulama migration'larından önce yapılmalıdır. Alembic autogenerate kapsamı `app/db/migrations.py` içindeki on uygulama tablosuyla sınırlıdır; mevcut katalog tablolarını silinecek tablo olarak değerlendirmemesi için katalog kapsam dışında tutulur. Yeni uygulama tablosu eklenirken izin listesi ve migration birlikte güncellenmelidir.
+Katalog aktarımı uygulama migration'larından önce yapılmalıdır. Alembic autogenerate kapsamı `backend/app/db/migrations.py` içindeki on uygulama tablosuyla sınırlıdır; mevcut katalog tablolarını silinecek tablo olarak değerlendirmemesi için katalog kapsam dışında tutulur. Yeni uygulama tablosu eklenirken izin listesi ve migration birlikte güncellenmelidir.
 
 ```sh
 .venv/bin/python -m alembic current
@@ -200,24 +210,23 @@ Bu kaynak klasör normal uygulama kurulumu için gerekli değildir; PostgreSQL a
 ## Proje yapısı
 
 ```text
-app/
-  api/          Endpoint'ler ve kimlik doğrulama bağımlılıkları
-  core/         Ayarlar, ortak seçenekler ve güvenlik yardımcıları
-  db/           Bağlantı, Base ve migration kapsamı
-  models/       SQLAlchemy modelleri
-  schemas/      İstek ve yanıt şemaları
-  services/     İş kuralları, katalog önerileri ve e-posta gönderimi
-  web/          HTML, CSS ve JavaScript arayüzü
-alembic/        Uygulama migration'ları
-catalog/        Katalog şeması, verisi ve kaynak araştırması
-scripts/        Kurulum, aktarım ve doğrulama araçları
+frontend/
+  index.html    Öğrenci arayüzü
+  src/          JavaScript, CSS ve SVG dosyaları
+  cloudflare/   Pages API yönlendirmesi
+  build.mjs     Bağımsız Pages derlemesi
+backend/
+  app/          FastAPI, modeller, şemalar ve servisler
+  alembic/      Uygulama migration'ları
+  catalog/      SQL katalog ve kaynak araştırması
+  scripts/      Kurulum, aktarım ve doğrulama araçları
 tests/          Otomatik testler
-docs/           Teknik belgeler ve arayüz ekran görüntüleri
+docs/           Teknik belgeler
 ```
 
 ## Sınırlar ve sonraki adımlar
 
-Mevcut katalogda kaynak kapsamı ve doğrulama durumu programlara göre değişebilir; tüm kayıtlar resmi olarak eksiksiz doğrulanmış kabul edilmemelidir. Kapsam bilgileri önerilerde korunur. Ayrıntılar: [Katalog araştırma raporu](catalog/RESEARCH_REPORT.md).
+Mevcut katalogda kaynak kapsamı ve doğrulama durumu programlara göre değişebilir; tüm kayıtlar resmi olarak eksiksiz doğrulanmış kabul edilmemelidir. Kapsam bilgileri önerilerde korunur. Ayrıntılar: [Katalog araştırma raporu](backend/catalog/RESEARCH_REPORT.md).
 
 Planlanan geliştirme sırası:
 

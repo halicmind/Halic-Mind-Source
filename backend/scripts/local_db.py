@@ -10,7 +10,7 @@ from psycopg import sql
 from dotenv import dotenv_values
 from sqlalchemy.engine import make_url
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 DATA = ROOT / '.local' / 'postgres'
 SOCKET = Path('/tmp') / f'halicmind-{os.getuid()}-5433'
 BIN = Path(os.environ.get('PG_BIN', '/opt/homebrew/opt/postgresql@17/bin'))

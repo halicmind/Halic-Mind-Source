@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     database_url: str
     database_schema: str | None = Field(default=None, pattern=r'^[a-z][a-z0-9_]{0,62}$')
     public_origin: str | None = None
+    serve_frontend: bool = True
     mail_provider: Literal['smtp', 'resend', 'gmail'] = 'smtp'
     resend_api_key: SecretStr | None = None
     gmail_client_id: str | None = None
@@ -33,7 +34,7 @@ class Settings(BaseSettings):
     smtp_password: SecretStr | None = None
     smtp_from: str = 'noreply@halicmind.local'
     smtp_timeout_seconds: int = Field(default=10, ge=1, le=60)
-    model_config = SettingsConfigDict(env_file=Path(__file__).resolve().parents[2] / '.env', extra='ignore')
+    model_config = SettingsConfigDict(env_file=Path(__file__).resolve().parents[3] / '.env', extra='ignore')
 
     @model_validator(mode='after')
     def validate_smtp(self):

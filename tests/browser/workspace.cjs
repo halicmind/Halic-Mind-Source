@@ -4,7 +4,7 @@ const { readFile } = require('node:fs/promises');
 const path = require('node:path');
 const { chromium } = require('playwright');
 
-const assets = path.resolve(__dirname, '../../app/web');
+const assets = path.resolve(__dirname, '../../frontend/src');
 for (const width of [390, 1440]) {
   test(`course actions survive an exam outage at ${width}px`, async () => {
     const browser = await chromium.launch({channel:'chrome'});
@@ -26,7 +26,8 @@ for (const width of [390, 1440]) {
         if (!url.pathname.startsWith('/api/v1/')) {
           const name = path.basename(url.pathname) || 'index.html';
           const type = {'.html':'text/html','.js':'text/javascript','.css':'text/css','.svg':'image/svg+xml'};
-          return route.fulfill({body:await readFile(path.join(assets,name)),contentType:type[path.extname(name)]});
+          const file = name === 'index.html' ? path.resolve(assets, '../index.html') : path.join(assets, name);
+          return route.fulfill({body:await readFile(file),contentType:type[path.extname(name)]});
         }
         const endpoint = url.pathname.slice(7);
         if (endpoint === '/exams/calendar') {

@@ -17,7 +17,7 @@ SCOPE = 'https://www.googleapis.com/auth/gmail.send'
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--client-file', type=Path, required=True)
-    parser.add_argument('--output', type=Path, default=Path(__file__).resolve().parents[1] / '.env.gmail')
+    parser.add_argument('--output', type=Path, default=Path(__file__).resolve().parents[2] / '.env.gmail')
     args = parser.parse_args()
     if args.output.exists():
         raise SystemExit('Output already exists; existing credentials preserved.')

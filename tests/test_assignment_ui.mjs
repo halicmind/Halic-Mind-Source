@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import test from 'node:test';
-const source=await readFile(new URL('../app/web/assignment-ui.js',import.meta.url),'utf8');
+const source=await readFile(new URL('../frontend/src/assignment-ui.js',import.meta.url),'utf8');
 const {toAssignmentInput,fromAssignmentInput,filterAssignments}=await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
 test('Istanbul input round-trips across UTC date boundaries independently of host time zone',()=>{
  assert.equal(fromAssignmentInput('2026-11-01T00:30'),'2026-10-31T21:30:00.000Z');

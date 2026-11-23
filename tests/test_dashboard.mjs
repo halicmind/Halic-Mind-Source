@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {dashboardData} from '../app/web/dashboard.js';
+import {dashboardData} from '../frontend/src/dashboard.js';
 const base={termId:1,courses:[],assignments:[],examCalendars:[]};
 test('dashboard excludes other terms and archives; counts only confirmed exams',()=>{
  const state={...base,courses:[{term_id:1,status:'passed'},{term_id:2,status:'passed'},{term_id:1,status:'failed',archived_at:'x'}],assignments:[{term_id:1,status:'pending',due_at:'2026-10-29T10:00:00+03:00'},{term_id:1,status:'completed',due_at:'2026-10-30T10:00:00+03:00'},{term_id:2,status:'pending',due_at:'2026-10-30T10:00:00+03:00'}],examCalendars:[{term_id:1,exams:[{status:'selection_required'},{status:'confirmed',selected:{starts_at:'2026-10-30T14:00:00+03:00'}}]}]};

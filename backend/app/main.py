@@ -28,13 +28,17 @@ async def lifespan(app):
 
 app = FastAPI(title=settings.application_name, version='0.2.0', lifespan=lifespan)
 app.include_router(router, prefix='/api/v1')
-WEB_ROOT = Path(__file__).resolve().parent / 'web'
-app.mount('/assets', StaticFiles(directory=WEB_ROOT), name='assets')
+FRONTEND_ROOT = Path(__file__).resolve().parents[2] / 'frontend'
+SERVE_FRONTEND = settings.serve_frontend and (FRONTEND_ROOT / 'index.html').is_file()
+if SERVE_FRONTEND:
+    app.mount('/assets', StaticFiles(directory=FRONTEND_ROOT / 'src'), name='assets')
 
 
 @app.get('/', include_in_schema=False)
 def student_interface():
-    return FileResponse(WEB_ROOT / 'index.html', headers={'Cache-Control': 'no-cache'})
+    if SERVE_FRONTEND:
+        return FileResponse(FRONTEND_ROOT / 'index.html', headers={'Cache-Control': 'no-cache'})
+    return {'application': settings.application_name, 'service': 'api', 'docs': '/docs', 'health': '/health'}
 
 
 @app.get('/api/v1/ui-config', include_in_schema=False)

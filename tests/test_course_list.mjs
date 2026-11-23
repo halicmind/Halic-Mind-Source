@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import test from 'node:test';
-const source=await readFile(new URL('../app/web/course-list.js',import.meta.url),'utf8');
+const source=await readFile(new URL('../frontend/src/course-list.js',import.meta.url),'utf8');
 const {visibleCourses}=await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
 const rows=[
  {id:1,term_id:7,course_code:'MAT10',course_name:'İleri Matematik',status:'passed',ects:'5',archived_at:null},
