@@ -11,6 +11,8 @@ router.include_router(catalog_router)
 router.include_router(auth_router)
 from app.api.v1.endpoints.microsoft_login import router as microsoft_login_router
 router.include_router(microsoft_login_router)
+from app.api.v1.endpoints.classroom import router as classroom_router
+router.include_router(classroom_router)
 router.include_router(users_router)
 router.include_router(academic_profile_router)
 router.include_router(terms_router)

@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     database_schema: str | None = Field(default=None, pattern=r'^[a-z][a-z0-9_]{0,62}$')
     public_origin: str | None = None
     serve_frontend: bool = True
+    classroom_client_id: str | None = None
+    classroom_client_secret: SecretStr | None = None
+    integration_encryption_key: SecretStr | None = None
     microsoft_client_id: str | None = None
     microsoft_client_secret: SecretStr | None = None
     microsoft_tenant_id: Literal['23fffcb6-2a4a-4b0c-b169-a2e1a5fefa4f'] = '23fffcb6-2a4a-4b0c-b169-a2e1a5fefa4f'
@@ -63,6 +66,13 @@ class Settings(BaseSettings):
             raise ValueError('Microsoft login requires both client ID and client secret')
         if self.microsoft_client_id and not self.public_origin:
             raise ValueError('Microsoft login requires PUBLIC_ORIGIN')
+        if bool(self.classroom_client_id) != bool(self.classroom_client_secret):
+            raise ValueError('Classroom requires both client ID and secret')
+        if self.classroom_client_id:
+            if not self.public_origin or not self.integration_encryption_key:
+                raise ValueError('Classroom requires PUBLIC_ORIGIN and INTEGRATION_ENCRYPTION_KEY')
+            from cryptography.fernet import Fernet
+            Fernet(self.integration_encryption_key.get_secret_value().encode())
         if self.smtp_host not in {'127.0.0.1', 'localhost', '::1', 'mailpit'} and self.smtp_tls_mode == 'none':
             raise ValueError('Remote SMTP requires starttls or ssl')
         if self.smtp_username and not self.smtp_password:

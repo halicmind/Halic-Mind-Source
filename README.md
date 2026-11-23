@@ -10,6 +10,8 @@ Frontend `/api/*` isteklerini Pages Function üzerinden Render'a iletir. Böylec
 
 Ayrıntılar: [Frontend](frontend/README.md), [Backend](backend/README.md), [Canlı ortam](docs/deployment.md).
 
+Google Classroom bağlantısı ve öğrenci bazlı ders/ödev aktarımı: [Classroom rehberi](docs/classroom.md).
+
 Haliç Üniversitesi öğrencilerinin bölümüne ve müfredatına uygun dersleri bulmasını, kişisel dönemlerini oluşturmasını ve ders geçmişini tek yerde tutmasını sağlayan web uygulaması.
 
 Proje, Advanced Computer Programming dersi kapsamında geliştiriliyor. Mevcut sürüm; akademik katalog, kullanıcı kaydı ve e-posta doğrulama, akademik profil, kişisel dönemler, ders yönetimi ve derslere bağlı ödev takibini kapsar. Resmi duyurulardan sınav takibi eklenmiştir; çalışma süresi takibi sonraki aşamadır.

@@ -7,6 +7,7 @@ from app.models.academic_term import AcademicTerm
 from app.models.enrollment import Enrollment
 
 from app.models.assignment import Assignment
+from app.models.classroom import ClassroomConnection
 
 __all__ = ['User', 'AuthRateLimit', 'EmailVerification', 'AcademicProfile', 'AcademicTerm', 'Enrollment', 'Assignment', 'ExamDocument', 'ExamSyncState', 'ExamSelection']
 

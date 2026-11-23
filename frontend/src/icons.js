@@ -21,6 +21,7 @@ const paths = {
   leaf:'<path d="M20 3C8 2 2 9 7 16s16 0 13-13ZM4 21l12-13"/>',
   graduation:'<path d="m2 9 10-5 10 5-10 5L2 9Zm4 2v6c4 3 8 3 12 0v-6m4-2v8"/>',
   chart:'<path d="M4 3v18h17M8 15v3m5-8v8m5-13v13"/>',
+  link:'<path d="m10 13 4-4m-6 7-1 1a4 4 0 0 1-6-6l4-4a4 4 0 0 1 6 0m2 1 1-1a4 4 0 0 1 6 6l-4 4a4 4 0 0 1-6 0"/>',
   menu:'<path d="M4 6h16M4 12h16M4 18h16"/>',
   refresh:'<path d="M20 7v5h-5M4 17v-5h5"/><path d="M6 7a7 7 0 0 1 12-1l2 3M4 15l2 3a7 7 0 0 0 12-1"/>',
   info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10h.01"/>',
