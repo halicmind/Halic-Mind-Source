@@ -84,7 +84,7 @@ def test_callback_creates_verified_session_and_cannot_be_replayed(auth_app, micr
     state = parse_qs(urlsplit(start.headers['location']).query)['state'][0]
     callback = BASE + f'/api/v1/auth/microsoft/callback?code=test-code&state={state}'
     response = auth_app.client.get(callback, follow_redirects=False)
-    assert response.headers['location'] == BASE + '/#/overview'
+    assert response.headers['location'] == BASE + '/app/#/overview'
     assert 'halicmind_session=' in response.headers['set-cookie']
     assert 'HttpOnly' in response.headers['set-cookie'] and 'Secure' in response.headers['set-cookie']
     user = auth_app.client.get(BASE + '/api/v1/users/me')

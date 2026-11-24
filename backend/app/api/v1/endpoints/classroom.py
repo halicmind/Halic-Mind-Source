@@ -92,7 +92,7 @@ def callback(request: Request, user: CurrentUser, db: DB):
         result = 'connected'
     except (jwt.PyJWTError, ValueError, KeyError, TypeError, OSError, HTTPException, IntegrityError):
         db.rollback()
-    response = RedirectResponse(settings.public_origin + '/#/connections?google=' + result, status_code=303)
+    response = RedirectResponse(settings.public_origin + '/app/#/connections?google=' + result, status_code=303)
     response.delete_cookie(FLOW_COOKIE, path=FLOW_PATH, secure=True, httponly=True, samesite='lax')
     return response
 

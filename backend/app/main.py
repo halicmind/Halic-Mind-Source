@@ -36,18 +36,19 @@ if SERVE_FRONTEND:
     app.mount('/assets', StaticFiles(directory=FRONTEND_ROOT / 'src'), name='assets')
 
 
-@app.get('/', include_in_schema=False)
+@app.get('/app/', include_in_schema=False)
 def student_interface():
     if SERVE_FRONTEND:
         return FileResponse(FRONTEND_ROOT / 'index.html', headers={'Cache-Control': 'no-cache'})
     return {'application': settings.application_name, 'service': 'api', 'docs': '/docs', 'health': '/health'}
 
 
+@app.get('/', include_in_schema=False)
 @app.get('/about/', include_in_schema=False)
 @app.get('/privacy/', include_in_schema=False)
 @app.get('/terms/', include_in_schema=False)
 def public_information(request: Request):
-    slug = request.url.path.strip('/')
+    slug = request.url.path.strip('/') or 'about'
     return FileResponse(FRONTEND_ROOT / 'public' / slug / 'index.html', headers={'Cache-Control': 'no-cache'})
 
 
@@ -74,7 +75,7 @@ async def browser_headers(request, call_next):
     response = await call_next(request)
     response.headers['X-Content-Type-Options'] = 'nosniff'
     response.headers['Referrer-Policy'] = 'no-referrer'
-    if request.url.path in {'/', '/about/', '/privacy/', '/terms/', '/legal.css'} or request.url.path.startswith('/assets/'):
+    if request.url.path in {'/', '/app/', '/about/', '/privacy/', '/terms/', '/legal.css'} or request.url.path.startswith('/assets/'):
         response.headers['Content-Security-Policy'] = (
             "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; "
             "connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'; "

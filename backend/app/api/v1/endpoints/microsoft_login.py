@@ -53,7 +53,7 @@ def start(request: Request):
 @router.get('/callback', include_in_schema=False)
 def callback(request: Request, db: DB):
     enabled()
-    destination = settings.public_origin + '/#/login?microsoft_error=1'
+    destination = settings.public_origin + '/app/#/login?microsoft_error=1'
     session_token = None
     try:
         flow = jwt.decode(request.cookies.get(FLOW_COOKIE, ''),
@@ -70,7 +70,7 @@ def callback(request: Request, db: DB):
         user = microsoft.resolve_user(db, object_id, email, name)
         session_token = create_access_token(user.id, user.session_version)
         db.commit()
-        destination = settings.public_origin + '/#/overview'
+        destination = settings.public_origin + '/app/#/overview'
     except (jwt.PyJWTError, ValueError, KeyError, TypeError, OSError, IntegrityError):
         db.rollback()
         session_token = None

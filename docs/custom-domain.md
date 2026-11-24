@@ -37,3 +37,9 @@ Config, Render'ın `RENDER_EXTERNAL_URL` değerinin özel domaini ezmesini önle
 ## Gerekli erişimler
 
 Cloudflare API token: ilgili hesap için Cloudflare Pages Edit; halicmind.com zone için Zone Read ve DNS Edit. Anahtar yalnızca yerel ortam değişkeninde saklanır, repoya veya sohbet metnine yazılmaz. Google tarafındaki domain doğrulama TXT değeri Search Console'dan alınmalıdır; uydurulamaz.
+
+## Kök adres ve öğrenci alanı
+
+Kök `/` ve `/about/` aynı girişsiz statik tanıtım metnini sunar. `/app/` öğrenci arayüzüdür. Google Branding ana sayfası `https://halicmind.com/` veya `/about/` olabilir; ikisi de girişsizdir. Uygulama görünen adı `Haliç Mind` olarak eşleştirilmiştir. Gizlilik ve koşullar aynı domainde kalır. OAuth callback API adresleri değişmez, callback sonrasında kullanıcı `/app/#/...` içine döner.
+
+Cloudflare Pages'in yönetilen pages.dev katmanındaki Browser Integrity Check, varsayılan Python urllib istemcisini engelleyebilir; zone düzeyindeki ayarı değiştirmek bu katmanı devre dışı bırakmaz. Yayın kontrolleri açıklayıcı `HalicMind-Deployment-Check/1.0` User-Agent ile yapılır. Google'ın reddi yalnızca bu davranıştan kaynaklanmış varsayılmaz.

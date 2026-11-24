@@ -14,7 +14,7 @@ def web_login(env, headers=None):
 
 def test_student_shell_assets_and_security_headers():
     client=TestClient(app)
-    response=client.get('/')
+    response=client.get('/app/')
     assert response.status_code==200
     assert '<html lang="tr">' in response.text
     assert '/assets/app.js' in response.text
@@ -34,7 +34,7 @@ def test_render_serves_student_site_with_legacy_pages_settings():
     assert config.public_origin == RENDER_ORIGIN
     assert config.serve_frontend
     client = TestClient(app, base_url=RENDER_ORIGIN, follow_redirects=False)
-    response = client.get('/')
+    response = client.get('/app/')
     assert response.status_code == 200
     assert '/assets/app.js' in response.text
 
@@ -118,3 +118,18 @@ def test_public_ui_config_only_exposes_public_identity_metadata(monkeypatch):
     assert data['data_controller_name'] == 'Test operator'
     assert data['privacy_contact_email'] == 'privacy@example.org'
     assert not {'jwt_secret_key','database_url','smtp_password','smtp_username'} & data.keys()
+
+
+def test_public_home_does_not_boot_login_or_require_api():
+    client = TestClient(app)
+    for path in ['/', '/about/', '/privacy/', '/terms/']:
+        response = client.get(path)
+        assert response.status_code == 200
+        assert 'Haliç Mind' in response.text
+        assert '<form' not in response.text
+        assert '/assets/app.js' not in response.text
+        assert 'location.replace' not in response.text
+    root = client.get('/').text
+    assert 'Google Classroom' in root
+    assert 'href="/privacy/"' in root
+    assert 'href="/app/"' in root

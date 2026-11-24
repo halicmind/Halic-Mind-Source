@@ -7,6 +7,8 @@ services:
     startCommand: python -m scripts.start_production
     healthCheckPath: /health
     envVars:
+      - key: APPLICATION_NAME
+        value: Haliç Mind
       - key: DATABASE_URL
         sync: false
       - key: DATABASE_SCHEMA
