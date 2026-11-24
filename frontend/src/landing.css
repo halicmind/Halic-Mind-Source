@@ -13,3 +13,4 @@
 @media(min-width:761px){.universe-copy{max-width:660px}.scene-vignette{background:linear-gradient(90deg,#060b19fa 1%,#060b19dc 18%,#060b19a0 37%,transparent 72%),linear-gradient(0deg,#060b19 0%,transparent 24%,transparent 75%,#060b1977)}}
 .skip{color:#142144}.action:hover{box-shadow:0 8px 26px #02061145}
 @supports not (transform-style:preserve-3d){.scene-viewport{display:none}}
+.term-visual>div:first-child{background:#cbd6df}.deadline-progress i:nth-child(-n+3){background:#142144}
