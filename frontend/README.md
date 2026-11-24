@@ -20,3 +20,11 @@ Render serves the student interface with `SERVE_FRONTEND=true` and `PUBLIC_ORIGI
 ## Local development
 
 Run the backend from the repository root with `python -m uvicorn app.main:app --reload`. By default it serves these frontend files at `/` and `/assets` for local development. This avoids a separate proxy setup. To build the independent frontend, run `npm run build` from this directory.
+
+## Görsel sistem
+
+Tanıtım: `landing-template.mjs`, `src/landing.css`, `src/landing.js`. Kök ve `/about/` girişsiz, HTML içinde tam içerik sunar. Ajanda ve ders çizimleri açıklanan örnek veridir; canlı öğrenci verisi değildir.
+
+Öğrenci alanı: mevcut bileşenler üzerinde `src/halic-theme.css`; lacivert/mavi/kâğıt tonları, Plus Jakarta Sans ve Instrument Serif. Yazı tipleri ve OFL lisansları `src/fonts/` altında, aynı kaynaktan sunulur. Üniversite logosu kullanılmaz; bağımsız proje açıklaması korunur.
+
+Animasyonlar `prefers-reduced-motion` tercihini izler. JavaScript kapalı olduğunda tanıtım ve politikalar okunabilir kalır. IntersectionObserver yalnızca hareketi iyileştirir; metni gizlemez. Üretim derlemesi `npm run build`.

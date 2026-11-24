@@ -105,7 +105,7 @@ function renderAuth() {
   const mode=state.authMode;
   const view = mode === 'login' ? loginView : mode === 'register' ? registerView : mode === 'recover' ? recoveryView : verifyView;
   root.innerHTML = `<div class="login-surface">
-    <header class="login-brand">${brand()}</header>
+    <header class="login-brand">${brand()}<div class="login-story"><span class="eyebrow">HALİÇLİLER İÇİN KİŞİSEL AKADEMİK ALAN</span><h2>Yeni bir dönem.<br><em>Senin ritmin.</em></h2><p>Derslerini bir araya getir. Önündeki adımı gör.<br>Üniversite hayatında kendine yer aç.</p><img src="/assets/halic-lines.svg" alt="" aria-hidden="true"></div><a class="login-home" href="/">← Haliç Mind'i keşfet</a></header>
     <main id="main-content" class="login-fields">${view()}</main>
   </div>${siteFooter()}`;
   prepareAccessibility(root);
