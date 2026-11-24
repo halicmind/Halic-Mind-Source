@@ -25,8 +25,19 @@ test('date-only deadlines end at Istanbul day end and shortcuts cross month/year
  assert.equal(assignmentDateOffset(1,new Date('2026-12-31T12:00:00Z')),'2027-01-01');
  assert.equal(assignmentDateOffset(7,new Date('2028-02-25T12:00:00Z')),'2028-03-03');
  assert.doesNotMatch(assignmentDeadline('2026-10-31T20:59:59Z'),/23:59/);
- const today={id:7,term_id:1,title:'Bugün',course_code:'X',course_name:'X',status:'pending',due_at:'2026-10-29T00:00:00+03:00'};
+ const today={id:7,term_id:1,title:'Bugün',course_code:'X',course_name:'X',status:'pending',due_at:'2026-10-29T23:59:59+03:00'};
  const options={now:Date.parse('2026-10-29T18:00:00+03:00')};
  assert.equal(filterAssignments([today],{...options,view:'overdue'}).length,0);
  assert.equal(filterAssignments([today],{...options,view:'upcoming'}).length,1);
+});
+
+
+test('editing imported coursework retains its exact deadline, including seconds',async()=>{
+ const {assignmentDueAt}=await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
+ const original='2026-12-01T09:30:45Z';
+ assert.equal(assignmentDueAt('2026-12-01','12:30',original),original);
+ assert.equal(assignmentDueAt('2026-12-02','12:30',original),'2026-12-02T09:30:00.000Z');
+ assert.equal(assignmentDueAt('2026-12-01',''),'2026-12-01T20:59:59.999Z');
+ const item={id:1,status:'pending',due_at:'2026-12-01T09:30:00Z'};
+ assert.equal(filterAssignments([item],{view:'overdue',now:Date.parse('2026-12-01T09:31:00Z')}).length,1);
 });

@@ -51,6 +51,8 @@ class EnrollmentRead(BaseModel):
     term_id: int
     course_id: int | None
     course_revision_id: int | None
+    halicx_source_id: str | None = None
+    classroom_source_id: str | None = None
     course_code: str
     course_name: str
     ects: Decimal | None

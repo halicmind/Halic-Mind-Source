@@ -6,17 +6,18 @@ Existing service: `Halic-Mind-Source`, https://halic-mind-source.onrender.com.
 
 - Root directory: repository root. Python: 3.12 (`backend/.python-version`).
 - Build: `pip install -r requirements.txt -c requirements.lock.txt`.
-- Start: `python -m scripts.start_production`.
+- Current live start command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`. It does not run migrations.
+- Apply `python -m alembic upgrade head` explicitly against the existing application schema before deploying code that uses new tables or columns. A fresh installation can choose `python -m scripts.start_production`; do not assume the current service already uses it.
 - Health check: `/health`.
-- Free plan: startup performs the catalog import and Alembic migrations because pre-deploy jobs are unavailable. Import failures prevent startup. Use a single instance.
+- Use a single instance. A new render.yaml does not automatically update an existing service's command or schema.
 - Existing services do not automatically consume a newly added `render.yaml`; update their settings explicitly.
 
 Set secrets in Render Environment, never in Git:
 
 - `DATABASE_URL`: Supabase Connect → Session pooler URI, with URL-encoded password and `sslmode=require`. The `postgresql://` scheme is accepted. Use session mode, not transaction mode: catalog import contains multi-statement SQL and uses session settings.
-- `DATABASE_SCHEMA=halicmind`: creates a private schema and keeps app tables out of Supabase's exposed `public` schema. Do not add this schema to the Data API exposed schemas.
+- The existing deployment uses `public`; keep its schema configuration unchanged. HaliçX and study tables have RLS enabled with no direct client policies. Setting a different DATABASE_SCHEMA does not move existing records and can make them appear missing. A new private schema is an option for a new installation; moving an existing installation requires an explicit data migration plan.
 - `JWT_SECRET_KEY`: an independent random secret of at least 32 characters.
-- `PUBLIC_ORIGIN=https://halic-mind-source.onrender.com` and `SERVE_FRONTEND=true`.
+- `PUBLIC_ORIGIN=https://halicmind.com` and `SERVE_FRONTEND=true`.
 - `MAIL_PROVIDER=gmail`, `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN`, `GMAIL_SENDER=halicmind@gmail.com`.
 - `EXAM_SYNC_ENABLED=true`: the Render service checks official exam sources on startup and hourly while awake.
 

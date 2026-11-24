@@ -11,6 +11,7 @@ class Enrollment(Base):
     __tablename__ = 'enrollments'
     __table_args__ = (
         UniqueConstraint('id', 'user_id', name='uq_enrollments_id_owner'),
+        UniqueConstraint('user_id','term_id','halicx_source_id',name='uq_enrollments_halicx_source'),
         UniqueConstraint('user_id', 'term_id', 'classroom_source_id', name='uq_enrollments_classroom_source'),
         ForeignKeyConstraint(['term_id', 'user_id'], ['academic_terms.id', 'academic_terms.user_id'], ondelete='RESTRICT', name='fk_enrollments_term_owner'),
         CheckConstraint("status IN ('in_progress','passed','failed','withdrawn','exempt')", name='ck_enrollments_status'),
@@ -29,6 +30,7 @@ class Enrollment(Base):
     course_revision_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey('course_revisions.id', ondelete='RESTRICT'))
     course_code: Mapped[str] = mapped_column(String(100), nullable=False)
     course_name: Mapped[str] = mapped_column(String(500), nullable=False)
+    halicx_source_id: Mapped[str | None] = mapped_column(String(12))
     classroom_source_id: Mapped[str | None] = mapped_column(String(64))
     ects: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
     status: Mapped[str] = mapped_column(String(20), nullable=False)

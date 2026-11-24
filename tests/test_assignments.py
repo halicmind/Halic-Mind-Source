@@ -127,7 +127,7 @@ def test_assignment_migration_keeps_catalog_and_existing_courses(migration_db):
     tables=set(inspect(connection).get_table_names())
     count=connection.scalar(text('SELECT count(*) FROM course_revisions'))
     command.upgrade(config,'head')
-    assert set(inspect(connection).get_table_names()) == tables | {'assignments', 'exam_documents', 'exam_sync_state', 'exam_selections', 'classroom_connections', 'halicx_connections', 'halicx_items'}
+    assert set(inspect(connection).get_table_names()) == tables | {'assignments', 'exam_documents', 'exam_sync_state', 'exam_selections', 'classroom_connections', 'halicx_connections', 'halicx_items', 'study_sessions'}
     assert connection.scalar(text('SELECT count(*) FROM course_revisions')) == count
     command.check(config)
     command.downgrade(config,'0004_academic_planning')
@@ -137,14 +137,14 @@ def test_assignment_migration_keeps_catalog_and_existing_courses(migration_db):
     command.check(config)
 
 
-def test_due_day_remains_current_until_istanbul_midnight(academic_app,monkeypatch):
+def test_deadline_hour_is_respected_before_istanbul_midnight(academic_app,monkeypatch):
     from app.services import assignments
     frozen=datetime.fromisoformat('2026-10-29T20:30:00+00:00')
     monkeypatch.setattr(assignments,'utc_now',lambda:frozen)
     env=academic_app;course=setup_course(env)
-    today=create(env,course,title='Bugün',due_at='2026-10-29T00:00:00+03:00').json()
+    today=create(env,course,title='Bugün',due_at='2026-10-29T23:40:00+03:00').json()
     assert today['is_overdue'] is False
     assert env.client.get('/api/v1/assignments',params={'view':'overdue'}).json()==[]
     assert env.client.get('/api/v1/assignments',params={'view':'upcoming'}).json()[0]['id']==today['id']
-    monkeypatch.setattr(assignments,'utc_now',lambda:frozen+timedelta(minutes=31))
+    monkeypatch.setattr(assignments,'utc_now',lambda:frozen+timedelta(minutes=11))
     assert env.client.get(f"/api/v1/assignments/{today['id']}").json()['is_overdue'] is True

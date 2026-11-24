@@ -26,7 +26,7 @@ async def lifespan(app):
             await worker
         engine.dispose()
 
-app = FastAPI(title=settings.application_name, version='0.2.0', lifespan=lifespan)
+app = FastAPI(title=settings.application_name, version='0.3.0', lifespan=lifespan)
 app.include_router(router, prefix='/api/v1')
 FRONTEND_ROOT = Path(__file__).resolve().parents[2] / 'frontend'
 if not FRONTEND_ROOT.is_dir():

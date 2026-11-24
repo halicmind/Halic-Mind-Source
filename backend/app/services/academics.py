@@ -9,6 +9,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models import AcademicProfile, AcademicTerm, Enrollment, User
+from app.models.halicx import HalicxConnection
 from app.schemas.academic_profile import AcademicProfileWrite
 from app.schemas.academic_term import TermCreate, TermUpdate
 
@@ -144,5 +145,12 @@ def delete_term(db: Session, user_id: int, term_id: int):
     term = owned_term(db, user_id, term_id, lock=True)
     if db.scalar(select(Enrollment.id).where(Enrollment.term_id == term_id).limit(1)) is not None:
         raise HTTPException(409, 'Ders geçmişi içeren dönem silinemez; dersleri arşivleyebilirsiniz.')
+    connection = db.scalar(select(HalicxConnection).where(
+        HalicxConnection.term_id == term_id, HalicxConnection.user_id == user_id).with_for_update())
+    if connection is not None and connection.token_hash:
+        raise HTTPException(409, 'Bu döneme bağlı HaliçX eşleştirmesi var. Önce Bağlantılar ekranından HaliçX bağlantısını kaldırın.')
+    if connection is not None:
+        db.delete(connection)
+        db.flush()
     db.delete(term)
     commit(db)

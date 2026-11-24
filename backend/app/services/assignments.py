@@ -22,7 +22,7 @@ def payload(row: Assignment, course: Enrollment, now=None):
     data = {column.name: getattr(row, column.name) for column in Assignment.__table__.columns}
     data.update(course_code=course.course_code, course_name=course.course_name, term_id=course.term_id,
                 course_archived=course.archived_at is not None,
-                is_overdue=row.archived_at is None and row.status == 'pending' and row.due_at < day_start(now or utc_now()))
+                is_overdue=row.archived_at is None and row.status == 'pending' and row.due_at < (now or utc_now()))
     return data
 
 
@@ -76,9 +76,9 @@ def list_assignments(db: Session, user_id: int, *, term_id=None, enrollment_id=N
     elif view == 'completed':
         query = query.where(Assignment.status == 'completed')
     if view == 'overdue':
-        query = query.where(Assignment.due_at < day_start(now), Assignment.archived_at.is_(None))
+        query = query.where(Assignment.due_at < now, Assignment.archived_at.is_(None))
     if view == 'upcoming':
-        query = query.where(Assignment.due_at >= day_start(now), Assignment.due_at < day_start(now) + timedelta(days=7), Assignment.archived_at.is_(None))
+        query = query.where(Assignment.due_at >= now, Assignment.due_at < day_start(now) + timedelta(days=7), Assignment.archived_at.is_(None))
     if q:
         pattern = f'%{q}%'
         query = query.where(or_(Assignment.title.ilike(pattern), Enrollment.course_code.ilike(pattern), Enrollment.course_name.ilike(pattern)))

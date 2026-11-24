@@ -49,6 +49,6 @@ node --test tests/test_assignment_ui.mjs
 
 Dosya yükleme, bildirim/e-posta hatırlatmaları ve üniversiteye otomatik teslim bu sürümde yoktur.
 
-## Sade teslim günü akışı
+## Teslim günü ve saat
 
-Web arayüzü saat istemez; seçilen gün Türkiye saatinde gün sonu olarak API’ye gönderilir. Gecikme, API filtreleri ve ana sayfada Türkiye takvim günü üzerinden değerlendirilir: bugün teslim edilecek ödev gün içinde gecikmiş sayılmaz. Ödev kartları ve gündem saat göstermez; resmi sınav saatleri korunur. Tahmini süre eski API kayıtlarında korunur, webden düzenleme bu alanı silmez; arayüz ve ders dağılımında gösterilmez. Yeni migration veya mevcut kayıtların toplu güncellenmesi gerekmez.
+Saat boş bırakılırsa seçilen gün Türkiye saatinde gün sonu kabul edilir. İsteğe bağlı saat alanı saatli ödev oluşturmayı destekler. HaliçX/Classroom’dan gelen ödevin tarih ve saati değiştirilmediyse, başlık veya not düzenlemek kaynak teslim anını saniyeler dahil değiştirmez. Gecikme ve yaklaşan filtreleri gerçek teslim anını kullanır; bugün daha önce saati dolan ödev gecikmiştir. Tahmini süre eski API kayıtlarında korunur.

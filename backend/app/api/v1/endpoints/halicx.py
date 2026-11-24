@@ -127,12 +127,17 @@ def sync(data:Sync,row:Extension,db:DB):
     changed=0;uploads=[];archived_skipped=0
     for course in data.courses:
         code='HX-'+course.id
-        enrollment=db.scalar(select(Enrollment).where(Enrollment.user_id==row.user_id,Enrollment.term_id==row.term_id,Enrollment.course_code==code,Enrollment.course_id.is_(None)).order_by(Enrollment.archived_at.asc().nullsfirst(),Enrollment.id.desc()))
+        enrollment=db.scalar(select(Enrollment).where(Enrollment.user_id==row.user_id,Enrollment.term_id==row.term_id,Enrollment.halicx_source_id==course.id))
+        if enrollment is None:
+            enrollment=db.scalar(select(Enrollment).where(Enrollment.user_id==row.user_id,Enrollment.term_id==row.term_id,Enrollment.course_code==code,Enrollment.course_id.is_(None),Enrollment.halicx_source_id.is_(None)).order_by(Enrollment.archived_at.asc().nullsfirst(),Enrollment.id.desc()))
+        if enrollment is None:
+            enrollment=db.scalar(select(Enrollment).join(HalicxItem,HalicxItem.enrollment_id==Enrollment.id).where(HalicxItem.user_id==row.user_id,HalicxItem.term_id==row.term_id,HalicxItem.source_id.startswith(course.id+':'),Enrollment.halicx_source_id.is_(None)).order_by(Enrollment.archived_at.asc().nullsfirst(),Enrollment.id.desc()))
+        if enrollment is not None:enrollment.halicx_source_id=course.id
         if enrollment is not None and enrollment.archived_at is not None:
             archived_skipped+=len(course.items)
             continue
         if enrollment is None:
-            enrollment=Enrollment(user_id=row.user_id,term_id=row.term_id,course_code=code,course_name=course.name,status='in_progress');db.add(enrollment);db.flush()
+            enrollment=Enrollment(user_id=row.user_id,term_id=row.term_id,halicx_source_id=course.id,course_code=code,course_name=course.name,status='in_progress');db.add(enrollment);db.flush()
         else:
             enrollment.course_name=course.name
         seen=set()
@@ -157,7 +162,7 @@ def sync(data:Sync,row:Extension,db:DB):
                     if assignment is None:
                         assignment=Assignment(user_id=row.user_id,enrollment_id=enrollment.id,title=item.title,due_at=item.due_at,priority='normal',status='pending');db.add(assignment);db.flush();entry.assignment_id=assignment.id
                     if assignment.archived_at is None:
-                        assignment.title=item.title;assignment.description=item.description;assignment.due_at=item.due_at
+                        assignment.title=item.title;assignment.description=item.description[:5000] if item.description else None;assignment.due_at=item.due_at
             db.flush()
             if item.id.startswith('file:'):uploads.append({'source_id':item.id,'item_id':entry.id,'file_hash':entry.file_hash,'content_changed':content_changed})
     missing_dates=sum(i.kind=='assignment' and i.due_at is None for c in data.courses for i in c.items)

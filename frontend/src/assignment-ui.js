@@ -4,7 +4,15 @@ export function fromAssignmentInput(value){return new Date(`${value}${value.leng
 export function assignmentDate(value){return value?new Date(new Date(value).getTime()+3*3600000).toISOString().slice(0,10):'';}
 export function assignmentDateOffset(days,now=new Date()){const day=assignmentDate(now);return assignmentDate(new Date(new Date(`${day}T12:00:00+03:00`).getTime()+days*86400000));}
 export function assignmentDateEnd(value){return new Date(`${value}T23:59:59.999+03:00`).toISOString();}
-export function assignmentDeadline(value){return new Intl.DateTimeFormat('tr-TR',{day:'numeric',month:'short',year:'numeric',timeZone:'Etc/GMT-3'}).format(new Date(value));}
+export function assignmentDueAt(day,time='',original=null){
+ if(original && assignmentDate(original)===day && toAssignmentInput(original).slice(11,16)===time)return original;
+ return time?fromAssignmentInput(day+'T'+time):assignmentDateEnd(day);
+}
+export function assignmentDeadline(value){
+ const date=new Date(value),fmt=new Intl.DateTimeFormat('tr-TR',{day:'numeric',month:'short',year:'numeric',timeZone:'Etc/GMT-3'}).format(date);
+ const clock=toAssignmentInput(value).slice(11,16);
+ return fmt+' · '+(clock==='23:59'&&date.getUTCSeconds()===59?'Gün sonu':clock);
+}
 export function filterAssignments(items,{termId=null,view='all',archives=false,query='',sort='due',now=Date.now()}={}){
   const normalize=value=>String(value).toLocaleLowerCase('tr-TR').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/ı/g,'i');
   const words=normalize(query).split(/\s+/).filter(Boolean);
@@ -12,8 +20,8 @@ export function filterAssignments(items,{termId=null,view='all',archives=false,q
     const time=assignmentDate(item.due_at),today=assignmentDate(now),end=assignmentDateOffset(7,new Date(now)),pending=item.status==='pending';
     return (!termId || item.term_id===termId) && (archives || !item.archived_at)
       && (view==='all' || (view==='pending' && pending) || (view==='completed' && !pending)
-        || (view==='overdue' && !item.archived_at && pending && time<today)
-        || (view==='upcoming' && !item.archived_at && pending && time>=today && time<end))
+        || (view==='overdue' && !item.archived_at && pending && new Date(item.due_at).getTime()<Number(now))
+        || (view==='upcoming' && !item.archived_at && pending && new Date(item.due_at).getTime()>=Number(now) && time<end))
       && words.every(word=>normalize(`${item.title} ${item.course_code} ${item.course_name}`).includes(word));
   });
   return rows.sort((a,b)=>{
@@ -26,7 +34,7 @@ export function createAssignmentUI({e,icon,button,termLabel}){
   function status(item){
     if(item.archived_at)return '<span class="pill gray">Arşivde</span>';
     if(item.status==='completed')return '<span class="pill green">Tamamlandı</span>';
-    if(assignmentDate(item.due_at)<assignmentDate(new Date()))return '<span class="pill red">Gecikti</span>';
+    if(new Date(item.due_at).getTime()<Date.now())return '<span class="pill red">Gecikti</span>';
     return '<span class="pill amber">Yapılacak</span>';
   }
   function cards(items,compact=false){
@@ -44,7 +52,7 @@ export function createAssignmentUI({e,icon,button,termLabel}){
       let group = 'Yaklaşanlar';
       if (item.archived_at) group = 'Arşivlenenler';
       else if (item.status === 'completed') group = 'Tamamlananlar';
-      else if (due < today) group = 'Gecikenler';
+      else if (new Date(item.due_at).getTime()<Date.now()) group = 'Gecikenler';
       else if (due === today) group = 'Bugün';
       groups.get(group).push(item);
     }

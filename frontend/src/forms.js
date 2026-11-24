@@ -1,6 +1,6 @@
 // Transient form state only: no passwords or drafts are persisted in storage.
 const tracked=new WeakMap();
-const editableTypes=new Set(['profile','term','custom-course','edit-course','assignment']);
+const editableTypes=new Set(['profile','term','custom-course','edit-course','assignment','study']);
 const ignored=new Set(['academic_unit_id','program_label','grade_kind']);
 function snapshot(form){return JSON.stringify([...new FormData(form)].filter(([key])=>!ignored.has(key)));}
 export function rememberForms(container=document){container.querySelectorAll('form[data-form]').forEach(form=>{

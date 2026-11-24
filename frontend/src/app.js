@@ -1,12 +1,15 @@
+import {mountStudy} from './study.js';
+import {mountMaterials} from './materials.js';
+import {loadCenter,centerView} from './student-center.js';
 import {mountHalicx} from './halicx.js';
 import {mountConnections} from './connections.js';
 import {createDashboard} from './dashboard.js';
 import {createExamUI} from './exam-ui.js';
 import {prepareAccessibility,setMobileMenu} from './accessibility.js';
-import {api, allPages, setUnauthorizedHandler} from './api.js';
+import {api, allPages, setUnauthorizedHandler,invalidateSessionRequests} from './api.js';
 import {icon} from './icons.js';
 import {rememberForms,settleForm,cleanForm,canLeave,needsLeaveCheck,setFormBusy,clearFormErrors,fieldError,applyFieldErrors} from './forms.js';
-import {createAssignmentUI,assignmentPriorities,assignmentDate,assignmentDateOffset,assignmentDateEnd,filterAssignments} from './assignment-ui.js';
+import {createAssignmentUI,assignmentPriorities,assignmentDate,assignmentDateOffset,assignmentDateEnd,assignmentDueAt,toAssignmentInput,filterAssignments} from './assignment-ui.js';
 import {visibleCourses} from './course-list.js';
 import {legalTitles, legalContent} from './legal.js';
 
@@ -15,7 +18,7 @@ const modal = document.querySelector('#modal');
 const statuses = {in_progress:['Devam ediyor','amber'],passed:['Başarılı','green'],failed:['Başarısız','red'],withdrawn:['Dersten çekildim','gray'],exempt:['Muaf','blue']};
 const termNames = {fall:'Güz',spring:'Bahar',summer:'Yaz',annual:'Yıllık'};
 const prepNames = {not_required:'Hazırlık yok',in_progress:'Hazırlık devam ediyor',completed:'Hazırlık tamamlandı',exempt:'Hazırlıktan muaf'};
-const state = {user:null,profile:null,terms:[],examCalendars:[],examSync:null,courses:[],assignments:[],assignmentTermId:null,assignmentFilter:'all',assignmentArchives:false,assignmentQuery:'',assignmentSort:'due',programs:[],units:[],curricula:new Map(),termId:null,page:'overview',authMode:'login',email:'',config:{},status:'all',archives:false,courseView:'cards',courseQuery:'',courseSort:'name',modalTab:'suggested',suggestions:[],suggestPeriod:null,searchOffset:0,searchQuery:'',searchRows:[],busy:false};
+const state = {user:null,profile:null,terms:[],examCalendars:[],examSync:null,courses:[],assignments:[],assignmentTermId:null,assignmentFilter:'all',assignmentArchives:false,assignmentQuery:'',assignmentSort:'due',programs:[],units:[],curricula:new Map(),termId:null,page:'overview',authMode:'login',email:'',config:{},center:{},status:'all',archives:false,courseView:'cards',courseQuery:'',courseSort:'name',modalTab:'suggested',suggestions:[],suggestPeriod:null,searchOffset:0,searchQuery:'',searchRows:[],busy:false};
 const e = value => String(value ?? '').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const number = value => Number(value || 0).toLocaleString('tr-TR',{maximumFractionDigits:2});
 const selected = (a,b) => String(a) === String(b) ? ' selected' : '';
@@ -23,6 +26,9 @@ const applicationName = () => state.config.application_name || 'HalicMind';
 const brand = () => `<a class="brand" href="#/overview"><span class="brand-mark">${icon('brand')}</span>${e(applicationName())}</a>`;
 const initials = name => (name || 'Öğrenci').trim().split(/\s+/).slice(0,2).map(s=>s[0]).join('').toLocaleUpperCase('tr-TR');
 const preferredTerm = () => state.terms.find(term=>term.program_id===state.profile?.program_id && term.is_preparation===(state.profile?.preparation_status==='in_progress')) || state.terms[0];
+function rememberTerm(){try{if(state.user&&state.termId)localStorage.setItem('halicmind:term:'+state.user.id,String(state.termId));}catch{}}
+function storedTerm(){try{return Number(localStorage.getItem('halicmind:term:'+state.user.id));}catch{return null;}}
+const courseSource=course=>(course.halicx_source_id||course.course_code?.startsWith('HX-'))?'HaliçX':(course.classroom_source_id||course.course_code?.startsWith('GC-'))?'Classroom':'Kişisel ders';
 const currentTerm = () => state.terms.find(term=>term.id === state.termId);
 const termLabel = term => `${term.academic_year}–${term.academic_year+1} ${termNames[term.term_type]}${term.is_preparation?' · Hazırlık':''}`;
 const programName = id => state.programs.find(p=>p.id===id)?.name_tr || 'Program seçilmedi';
@@ -30,7 +36,7 @@ const activeCourses = () => state.courses.filter(course=>!course.archived_at && 
 const pill = status => { const [label,tone] = statuses[status] || statuses.in_progress; return `<span class="pill ${tone}"><span class="dot"></span>${label}</span>`; };
 const button = (action,label,kind='primary',glyph='',extra='') => `<button type="button" class="btn ${kind}" data-action="${action}" ${extra}>${glyph?icon(glyph):''}${label}</button>`;
 
-const dashboard=createDashboard({e,icon,termPicker,termLabel,button});
+const dashboard=createDashboard({e,icon,termPicker,termLabel,button,hub:state=>centerView(state,{e,icon})});
 const examUI=createExamUI({e,icon,button,termPicker,termLabel,emptyState});
 const assignmentUI=createAssignmentUI({e,icon,button,termLabel});
 
@@ -48,7 +54,7 @@ function toast(message,error=false,undoId=null) {
   container.append(item);setTimeout(()=>item.remove(),undoId===null?6500:15000);
 }
 function formError(form,message) { const target=form.querySelector('.form-error'); if(target){target.textContent=message; target.setAttribute('role','alert');target.tabIndex=-1;target.focus();} else toast(message,true); }
-function showError(error) { if(error.status!==401) toast(error.message || 'Bir sorun oluştu. Lütfen tekrar dene.',true); }
+function showError(error) { if(error.name!=='AbortError' && error.status!==401) toast(error.message || 'Bir sorun oluştu. Lütfen tekrar dene.',true); }
 const verificationRequests = new Map();
 const recoveryRequests = new Map();
 let resendTimer;
@@ -86,7 +92,8 @@ function loadingDialog(title) { dialog(title,'',`<div class="dialog-loading"><sp
 function go(page){location.hash=`/${page}`; if(state.page===page) render();}
 function sessionExpired(){
   if(!state.user) return;
-  state.user=null; state.profile=null; state.terms=[];state.examCalendars=[];state.examSync=null; state.courses=[];state.assignments=[];state.assignmentTermId=null;state.assignmentFilter='all';state.assignmentQuery='';state.assignmentArchives=false; state.termId=null; state.status='all'; state.archives=false; closeModal(true);
+  invalidateSessionRequests();++workspaceRequest;++centerRequest;state.center={};
+  state.user=null; state.profile=null; state.terms=[];state.examCalendars=[];state.examSync=null; state.courses=[];state.assignments=[];state.assignmentTermId=null;state.assignmentFilter='all';state.assignmentQuery='';state.assignmentArchives=false;state.assignmentSort='due';state.courseQuery='';state.courseSort='name';state.courseView='cards'; state.termId=null; state.status='all'; state.archives=false; closeModal(true);
   state.authMode='login'; renderAuth(); toast('Oturumun sona erdi. Devam etmek için tekrar giriş yap.',true);
 }
 setUnauthorizedHandler(sessionExpired);
@@ -189,14 +196,24 @@ function planKind(cu){
   return cu?.period_kinds?.length===1?cu.period_kinds[0]:null;
 }
 
+let workspaceRequest=0,centerRequest=0;
 async function loadWorkspace(){
+  const user=state.user,request=++workspaceRequest;if(!user)return false;
   await loadCatalog();
   const results=await Promise.all([api('/users/me/academic-profile').catch(error=>{if(error.status===404)return null;throw error;}),allPages('/terms'),allPages('/enrollments?include_archived=true'),allPages('/assignments?include_archived=true')]);
+  if(user!==state.user||request!==workspaceRequest)return false;
   [state.profile,state.terms,state.courses,state.assignments]=results;
-  if(!state.terms.some(term=>term.id===state.termId)) state.termId=preferredTerm()?.id || null;
+  if(!state.terms.some(term=>term.id===state.termId)) state.termId=(state.terms.find(t=>t.id===storedTerm())||preferredTerm())?.id || null;
+  rememberTerm();
   await Promise.all([...new Set([...state.terms.map(t=>t.program_id),...(state.profile?[state.profile.program_id]:[])])].map(curriculaFor));
-  void refreshExams();
+  if(user!==state.user||request!==workspaceRequest)return false;
+  void refreshExams();void refreshCenter();return true;
 }
+async function refreshCenter(){
+ const user=state.user,termId=state.termId,request=++centerRequest;if(!user)return;
+ try{const center=await loadCenter(termId);if(user!==state.user||termId!==state.termId||request!==centerRequest)return;state.center=center;const target=root.querySelector('#student-center');if(target)target.innerHTML=centerView(state,{e,icon});if(center.halicx){const link=root.querySelector('.nav-link[href="#/materials"]');if(link){link.querySelector('.nav-count')?.remove();if(center.halicx.unread){const badge=document.createElement('span');badge.className='nav-count';badge.textContent=center.halicx.unread;link.append(badge);}}}}catch(error){if(error.name!=='AbortError')showError(error);}
+}
+setInterval(()=>{if(state.user&&!document.hidden&&['overview','materials','study'].includes(state.page))void refreshCenter();},60000);
 
 let examRequest = 0;
 async function refreshExams(){
@@ -213,7 +230,7 @@ async function refreshExams(){
     state.examSync = null;
     state.examState = 'error';
   }
-  if (['exams','overview'].includes(state.page) && !isLegal()) renderDestination();
+  if (['exams','overview'].includes(state.page) && !isLegal() && !modal.open && !needsLeaveCheck(root)) renderDestination();
 }
 
 function applyCourse(course){
@@ -230,10 +247,13 @@ function render(){
   if(isLegal() && renderLegal())return;
   if(!state.user) return renderAuth();
   const requested=location.hash.slice(2).split('?')[0];
-  state.page=requested==='connections'?'connections':state.profile && ['overview','courses','assignments','exams','history','profile'].includes(requested)?requested:state.profile?'overview':'profile';
-  const labels={connections:'Bağlantılar',overview:'Genel bakış',courses:'Derslerim',assignments:'Ödevlerim',exams:'Sınavlar',history:'Geçmiş dönemler',profile:'Akademik profil'};
-  root.innerHTML=`<div class="workspace ${state.page==='overview'?'overview-theme':''}"><div class="mobile-backdrop" data-action="toggle-menu"></div><aside class="sidebar"><button class="icon-btn menu-close" data-action="close-menu" aria-label="Menüyü kapat">${icon('close')}</button>${brand()}<div class="side-label">ÖĞRENCİ ALANI</div><nav class="side-nav" aria-label="Ana gezinme">${navLink('overview','Genel bakış','grid')}${navLink('courses','Derslerim','book',activeCourses().length)}${navLink('assignments','Ödevlerim','calendar',state.assignments.filter(item=>!item.archived_at && item.status==='pending').length)}${navLink('exams','Sınavlar','calendar')}${navLink('history','Geçmiş dönemler','history')}${navLink('profile','Akademik profil','user')}${navLink('connections','Bağlantılar','link')}</nav><div class="side-note"><span class="eyebrow">ÇALIŞMA ALANIN</span><h3>Önce bu dönem.</h3><p>Geçmiş derslerini daha sonra da tamamlayabilirsin.</p><a href="#/history">Dönem geçmişini aç ${icon('arrow')}</a></div><div class="side-user"><span class="avatar">${e(initials(state.user.full_name))}</span><div><div class="side-user-name">${e(state.user.full_name)}</div><div class="side-user-role">Öğrenci hesabı</div></div><button data-action="logout" title="Çıkış yap" aria-label="Çıkış yap">${icon('logout')}</button></div></aside><header class="topbar"><button class="icon-btn mobile-menu" data-action="toggle-menu" aria-label="Menüyü aç" aria-expanded="false">${icon('menu')}</button><div class="breadcrumb"><span class="desktop-crumb">Öğrenci alanı</span><span class="mobile-brand">${e(applicationName())}</span>${icon('chevron')}<span>${labels[state.page]}</span></div><div class="topbar-right"><span class="topbar-date">${e(new Intl.DateTimeFormat('tr-TR',{day:'numeric',month:'long',year:'numeric',timeZone:'Europe/Istanbul'}).format(new Date()))}</span><span class="verified-label">${icon('shield')}Doğrulanmış hesap</span><span class="avatar">${e(initials(state.user.full_name))}</span></div></header><main class="page" id="main-content" tabindex="-1">${state.page==='connections'?'<div class="page-title"><div><h1>Bağlantılar</h1><p>Akademik kaynaklarını hesabına bağla.</p></div></div><div id="halicx-panel"></div><div id="classroom-panel"></div>':state.page==='exams'?examsView():state.page==='overview'?overviewView():state.page==='courses'?coursesView():state.page==='assignments'?assignmentUI.page(state):state.page==='history'?historyView():profileView()}${siteFooter()}</main></div>`;
+  state.page=['connections','materials'].includes(requested)?requested:state.profile && ['overview','courses','assignments','exams','history','profile','study'].includes(requested)?requested:state.profile?'overview':'profile';
+  const labels={materials:'Materyaller',study:'Çalışma günlüğü',connections:'Bağlantılar',overview:'Genel bakış',courses:'Derslerim',assignments:'Ödevlerim',exams:'Sınavlar',history:'Geçmiş dönemler',profile:'Akademik profil'};
+  root.innerHTML=`<div class="workspace ${state.page==='overview'?'overview-theme':''}"><div class="mobile-backdrop" data-action="toggle-menu"></div><aside class="sidebar"><button class="icon-btn menu-close" data-action="close-menu" aria-label="Menüyü kapat">${icon('close')}</button>${brand()}<div class="side-label">ÖĞRENCİ ALANI</div><nav class="side-nav" aria-label="Ana gezinme">${navLink('overview','Genel bakış','grid')}${navLink('courses','Derslerim','book',activeCourses().length)}${navLink('assignments','Ödevlerim','calendar',state.assignments.filter(item=>!item.archived_at && item.status==='pending').length)}${navLink('exams','Sınavlar','calendar')}${navLink('materials','Materyaller','book',state.center.halicx?.unread||'')}${navLink('study','Çalışma günlüğü','history')}${navLink('history','Geçmiş dönemler','history')}${navLink('profile','Akademik profil','user')}${navLink('connections','Bağlantılar','link')}</nav><div class="side-note"><span class="eyebrow">ÇALIŞMA ALANIN</span><h3>Önce bu dönem.</h3><p>Geçmiş derslerini daha sonra da tamamlayabilirsin.</p><a href="#/history">Dönem geçmişini aç ${icon('arrow')}</a></div><div class="side-user"><span class="avatar">${e(initials(state.user.full_name))}</span><div><div class="side-user-name">${e(state.user.full_name)}</div><div class="side-user-role">Öğrenci hesabı</div></div><button data-action="logout" title="Çıkış yap" aria-label="Çıkış yap">${icon('logout')}</button></div></aside><header class="topbar"><button class="icon-btn mobile-menu" data-action="toggle-menu" aria-label="Menüyü aç" aria-expanded="false">${icon('menu')}</button><div class="breadcrumb"><span class="desktop-crumb">Öğrenci alanı</span><span class="mobile-brand">${e(applicationName())}</span>${icon('chevron')}<span>${labels[state.page]}</span></div><div class="topbar-right"><button class="icon-btn" data-action="refresh-workspace" aria-label="Verileri yenile" title="Verileri yenile">${icon('restore')}</button><span class="topbar-date">${e(new Intl.DateTimeFormat('tr-TR',{day:'numeric',month:'long',year:'numeric',timeZone:'Europe/Istanbul'}).format(new Date()))}</span><span class="verified-label">${icon('shield')}Doğrulanmış hesap</span><span class="avatar">${e(initials(state.user.full_name))}</span></div></header><main class="page" id="main-content" tabindex="-1">${state.page==='connections'?'<div class="page-title"><div><h1>Bağlantılar</h1><p>Akademik kaynaklarını hesabına bağla.</p></div></div><div id="halicx-panel"></div><div id="classroom-panel"></div>':state.page==='materials'?'<div class="page-title"><div><h1>Materyaller</h1><p>Ders notların ve HaliçX içeriklerin tek yerde.</p></div><a class="btn light" href="#/connections">Bağlantı ayarları</a></div><div id="materials-panel"></div>':state.page==='study'?'<div class="page-title"><div><h1>Çalışma günlüğü</h1><p>Derslerine ayırdığın zamanı kaydet ve takip et.</p></div>'+termPicker()+'</div><div id="study-panel"></div>':state.page==='exams'?examsView():state.page==='overview'?overviewView():state.page==='courses'?coursesView():state.page==='assignments'?assignmentUI.page(state):state.page==='history'?historyView():profileView()}${siteFooter()}</main></div>`;
   prepareAccessibility(root);rememberForms(root);
+  if(state.page==='materials')void mountMaterials(root.querySelector('#materials-panel'),{terms:state.terms,courses:state.courses,e,onChanged:refreshCenter}).catch(showError);
+  if(state.page==='study')void mountStudy(root.querySelector('#study-panel'),{courses:state.courses,termId:state.termId,e,onChanged:refreshCenter}).catch(showError);
+  if(state.page==='profile'){const main=root.querySelector('main');main.querySelector('.site-footer').insertAdjacentHTML('beforebegin',`<section class="panel panel-padding account-data"><h2>Hesabın ve verilerin</h2><p>${e(state.user.email)}</p><a class="btn light" href="/api/v1/users/me/export">Verilerimi JSON olarak indir</a><p class="muted">Dersler, ödevler, çalışma kayıtları ve materyal bilgileri. Dosya kopyalarını Materyaller ekranından ayrı indirebilirsin.</p></section>`);}
   if(state.page==='connections')void mountHalicx(root.querySelector('#halicx-panel'),{terms:state.terms,courses:state.courses,e,onImported:loadWorkspace}).catch(error=>{const p=root.querySelector('#halicx-panel');if(p)p.innerHTML='<p role="alert">HaliçX bağlantısı yüklenemedi: '+e(error.message)+'</p>';});
   if(state.page==='connections')void mountConnections(root.querySelector('#classroom-panel'),{terms:state.terms,onImported:loadWorkspace,e});
   if(document.activeElement===document.body && !modal.open)root.querySelector('main')?.focus({preventScroll:true});
@@ -242,16 +262,16 @@ function render(){
 function termPicker(){return `<div class="term-picker"><select aria-label="Aktif dönem" data-change="active-term">${state.terms.length?state.terms.map(term=>`<option value="${term.id}"${selected(term.id,state.termId)}>${e(termLabel(term))}</option>`).join(''):'<option value="">Henüz dönem yok</option>'}</select><button class="icon-btn" data-action="new-term" title="Yeni dönem oluştur" aria-label="Yeni dönem oluştur">${icon('plus')}</button>${state.termId?`<button class="icon-btn" data-action="edit-term" title="Dönemi düzenle" aria-label="Dönemi düzenle">${icon('edit')}</button>`:''}</div>`;}
 function emptyState(title,description,action,label,compact=false,glyph='book'){return `<div class="empty-state ${compact?'compact':''}"><div class="empty-icon">${icon(glyph)}</div><h3>${e(title)}</h3><p>${e(description)}</p>${action?button(action,label,'primary','plus'):''}</div>`;}
 function courseIcon(course,index){return `<div class="course-icon tone-${index%4}" aria-hidden="true">${e(course.course_code.replace(/[^A-Za-zÇĞİÖŞÜçğıöşü]/g,'').slice(0,2).toLocaleUpperCase('tr-TR') || 'D')}</div>`;}
-function miniCourse(course,index){return `<div class="course-mini">${courseIcon(course,index)}<div class="mini-main"><h3>${e(course.course_name)}</h3><p>${e(course.course_code)}${course.course_id===null?' · Kişisel ders':''}</p></div><div class="mini-end"><span class="credits">${course.ects===null?'AKTS belirtilmedi':`${number(course.ects)} AKTS`}</span>${pill(course.status)}</div>${removeCourseButton(course)}</div>`;}
+function miniCourse(course,index){return `<div class="course-mini">${courseIcon(course,index)}<div class="mini-main"><h3>${e(course.course_name)}</h3><p>${e(course.course_code)}${course.course_id===null?' · '+e(courseSource(course)):''}</p></div><div class="mini-end"><span class="credits">${course.ects===null?'AKTS belirtilmedi':`${number(course.ects)} AKTS`}</span>${pill(course.status)}</div>${removeCourseButton(course)}</div>`;}
 function overviewView(){return dashboard.view(state);}
 
 function courseAssignmentButton(course) {
   return button('new-assignment','Ödev ekle','light small','plus',
     `data-course="${course.id}" aria-label="${e(course.course_code)} için ödev ekle"`);
 }
-function halicxCourseLink(course){return course.course_code?.startsWith('HX-')?`<a class="btn light small" href="#/connections?course=${course.id}">Ders materyalleri ↗</a>`:'';}
-function courseCards(courses){return `<div class="courses-grid">${courses.map((course,index)=>`<article class="course-card ${course.archived_at?'archived':''}"><div class="course-card-top">${courseIcon(course,index)}${course.archived_at?'<span class="pill gray">Arşivlendi</span>':pill(course.status)}</div><div><h3>${e(course.course_name)}</h3><div class="course-meta"><span>${e(course.course_code)}</span><span>·</span><span>${course.ects===null?'AKTS belirtilmedi':`${number(course.ects)} AKTS`}</span>${course.course_id===null?'<span>· Kişisel ders</span>':''}</div></div><div class="course-card-footer"><span class="grade-label">${!gradedStatuses.includes(course.status)?(course.status==='in_progress'?'Ders devam ediyor':'Not uygulanmaz'):course.grade?`Not: <strong>${e(course.grade)}</strong>`:'Sonuç notu eklenmedi'}</span><div class="card-actions">${previousResultsButton(course)}${course.archived_at?button('restore-course','Geri yükle','light small','restore',`data-id="${course.id}"`):`${halicxCourseLink(course)}${courseAssignmentButton(course)}<button class="icon-btn" data-action="edit-course" data-id="${course.id}" aria-label="${e(course.course_code)} dersini düzenle" title="Sonuç ve notu düzenle">${icon('edit')}<span class="course-edit-label">Sonuç / not</span></button>${removeCourseButton(course)}`}</div></div></article>`).join('')}</div>`;}
-function courseList(courses){return `<div class="panel course-list-panel"><div class="table-scroll"><table class="personal-course-table"><thead><tr><th>Ders</th><th>AKTS</th><th>Durum</th><th>Not</th><th><span class="sr-only">İşlemler</span></th></tr></thead><tbody>${courses.map(course=>`<tr class="${course.archived_at?'archived-row':''}"><td><strong>${e(course.course_name)}</strong><small>${e(course.course_code)}${course.course_id===null?' · Kişisel':''}${course.archived_at?' · Arşivde':''}</small></td><td>${course.ects===null?'—':number(course.ects)}</td><td>${pill(course.status)}</td><td>${e(gradedStatuses.includes(course.status)?course.grade || 'Not girilmedi':'—')}</td><td><div class="list-actions">${previousResultsButton(course)}${course.archived_at?button('restore-course','Geri yükle','light small','restore',`data-id="${course.id}"`):`${halicxCourseLink(course)}${courseAssignmentButton(course)}<button class="icon-btn" data-action="edit-course" data-id="${course.id}" aria-label="${e(course.course_code)} dersini düzenle">${icon('edit')}<span class="course-edit-label">Sonuç / not</span></button>${removeCourseButton(course)}`}</div></td></tr>`).join('')}</tbody></table></div></div>`;}
+function halicxCourseLink(course){return (course.halicx_source_id||course.course_code?.startsWith('HX-'))?`<a class="btn light small" href="#/materials?course=${course.id}">Ders materyalleri ↗</a>`:'';}
+function courseCards(courses){return `<div class="courses-grid">${courses.map((course,index)=>`<article class="course-card ${course.archived_at?'archived':''}"><div class="course-card-top">${courseIcon(course,index)}${course.archived_at?'<span class="pill gray">Arşivlendi</span>':pill(course.status)}</div><div><h3>${e(course.course_name)}</h3><div class="course-meta"><span>${e(course.course_code)}</span><span>·</span><span>${course.ects===null?'AKTS belirtilmedi':`${number(course.ects)} AKTS`}</span>${course.course_id===null?'<span>· '+e(courseSource(course))+'</span>':''}</div></div><div class="course-card-footer"><span class="grade-label">${!gradedStatuses.includes(course.status)?(course.status==='in_progress'?'Ders devam ediyor':'Not uygulanmaz'):course.grade?`Not: <strong>${e(course.grade)}</strong>`:'Sonuç notu eklenmedi'}</span><div class="card-actions">${previousResultsButton(course)}${course.archived_at?button('restore-course','Geri yükle','light small','restore',`data-id="${course.id}"`):`${halicxCourseLink(course)}${courseAssignmentButton(course)}<button class="icon-btn" data-action="edit-course" data-id="${course.id}" aria-label="${e(course.course_code)} dersini düzenle" title="Sonuç ve notu düzenle">${icon('edit')}<span class="course-edit-label">Sonuç / not</span></button>${removeCourseButton(course)}`}</div></div></article>`).join('')}</div>`;}
+function courseList(courses){return `<div class="panel course-list-panel"><div class="table-scroll"><table class="personal-course-table"><thead><tr><th>Ders</th><th>AKTS</th><th>Durum</th><th>Not</th><th><span class="sr-only">İşlemler</span></th></tr></thead><tbody>${courses.map(course=>`<tr class="${course.archived_at?'archived-row':''}"><td><strong>${e(course.course_name)}</strong><small>${e(course.course_code)}${course.course_id===null?' · '+e(courseSource(course)):''}${course.archived_at?' · Arşivde':''}</small></td><td>${course.ects===null?'—':number(course.ects)}</td><td>${pill(course.status)}</td><td>${e(gradedStatuses.includes(course.status)?course.grade || 'Not girilmedi':'—')}</td><td><div class="list-actions">${previousResultsButton(course)}${course.archived_at?button('restore-course','Geri yükle','light small','restore',`data-id="${course.id}"`):`${halicxCourseLink(course)}${courseAssignmentButton(course)}<button class="icon-btn" data-action="edit-course" data-id="${course.id}" aria-label="${e(course.course_code)} dersini düzenle">${icon('edit')}<span class="course-edit-label">Sonuç / not</span></button>${removeCourseButton(course)}`}</div></td></tr>`).join('')}</tbody></table></div></div>`;}
 function courseResults(){
   const rows=visibleCourses(state.courses,{termId:state.termId,archives:state.archives,status:state.status,query:state.courseQuery,sort:state.courseSort});
   if(rows.length)return state.courseView==='list'?courseList(rows):courseCards(rows);
@@ -743,7 +763,7 @@ function openAssignmentDialog(id=null,courseId=null){
   if(!item && !courses.length){dialog('Önce bir ders ekle','Ödevler kişisel ders kayıtlarına bağlanır.',`<div class="modal-body"><p class="check-note">Derslerim ekranından bir ders ekledikten sonra ödev oluşturabilirsin.</p></div>`,button('close-modal','Kapat','light'));return;}
   const preferredCourse=item?.enrollment_id || courseId || courses.find(course=>course.term_id===(state.assignmentTermId || state.termId) && course.status==='in_progress')?.id || '';
   const groups=[...new Set(courses.map(course=>course.term_id))].sort((a,b)=>Number(b===(state.assignmentTermId||state.termId))-Number(a===(state.assignmentTermId||state.termId)));
-  dialog(item?'Ödevi düzenle':'Yeni ödev',sourceTerm?termLabel(sourceTerm):'Dersini seç, başlığını yaz, teslim gününü belirle.',`<form data-form="assignment" data-id="${item?.id || ''}"><div class="modal-body assignment-quick-body"><div class="field"><label for="assignment-course">Ders</label>${item?`<input id="assignment-course" value="${e(item.course_code+' · '+item.course_name)}" disabled>`:`<select id="assignment-course" name="enrollment_id" required><option value="">Ders seç</option>${groups.map(termId=>`<optgroup label="${e(termLabel(state.terms.find(term=>term.id===termId)))}">${courses.filter(course=>course.term_id===termId).map(course=>`<option value="${course.id}"${selected(course.id,preferredCourse)}>${e(course.course_code+' · '+course.course_name)}</option>`).join('')}</optgroup>`).join('')}</select>`}</div><div class="field"><label for="assignment-title">Ödev başlığı</label><input id="assignment-title" name="title" required maxlength="200" placeholder="Örn. 3. hafta alıştırmaları" value="${e(item?.title)}"></div><div class="field"><label for="assignment-due">Teslim tarihi</label><input id="assignment-due" name="due_at" type="date" required min="1900-01-01" max="2200-12-31" value="${e(assignmentDate(item?.due_at))}"><div class="assignment-date-shortcuts" role="group" aria-label="Hızlı teslim tarihi">${[[0,'Bugün'],[1,'Yarın'],[7,'1 hafta sonra']].map(([days,label])=>button('assignment-date',label,'light small','',`data-days="${days}"`)).join('')}</div><small>Teslim günü boyunca gecikmiş sayılmaz.</small></div><fieldset class="assignment-priority-picker"><legend>Önem</legend><div>${Object.entries(assignmentPriorities).map(([value,label])=>`<label class="priority-option priority-${value}"><input type="radio" name="priority" value="${value}"${value===(item?.priority || 'normal')?' checked':''}><span><i aria-hidden="true"></i>${label}</span></label>`).join('')}</div></fieldset><details class="assignment-extra"><summary>Not ekle <span>İsteğe bağlı${item?.description?' · Kayıtlı not var':''}</span></summary><div class="field"><label for="assignment-description">Kendine not</label><textarea id="assignment-description" name="description" maxlength="5000" rows="2" placeholder="Eklemek istediğin bir ayrıntı…">${e(item?.description)}</textarea></div></details><div class="form-error"></div></div><div class="modal-foot">${button('close-modal','Vazgeç','light')}<button type="submit" class="btn primary">${item?'Kaydet':'Ödevi ekle'} ${icon('check')}</button></div></form>`);
+  dialog(item?'Ödevi düzenle':'Yeni ödev',sourceTerm?termLabel(sourceTerm):'Dersini seç, başlığını yaz, teslim gününü belirle.',`<form data-form="assignment" data-id="${item?.id || ''}"><div class="modal-body assignment-quick-body"><div class="field"><label for="assignment-course">Ders</label>${item?`<input id="assignment-course" value="${e(item.course_code+' · '+item.course_name)}" disabled>`:`<select id="assignment-course" name="enrollment_id" required><option value="">Ders seç</option>${groups.map(termId=>`<optgroup label="${e(termLabel(state.terms.find(term=>term.id===termId)))}">${courses.filter(course=>course.term_id===termId).map(course=>`<option value="${course.id}"${selected(course.id,preferredCourse)}>${e(course.course_code+' · '+course.course_name)}</option>`).join('')}</optgroup>`).join('')}</select>`}</div><div class="field"><label for="assignment-title">Ödev başlığı</label><input id="assignment-title" name="title" required maxlength="200" placeholder="Örn. 3. hafta alıştırmaları" value="${e(item?.title)}"></div><div class="field"><label for="assignment-due">Teslim tarihi</label><input id="assignment-due" name="due_at" type="date" required min="1900-01-01" max="2200-12-31" value="${e(assignmentDate(item?.due_at))}"><div class="assignment-date-shortcuts" role="group" aria-label="Hızlı teslim tarihi">${[[0,'Bugün'],[1,'Yarın'],[7,'1 hafta sonra']].map(([days,label])=>button('assignment-date',label,'light small','',`data-days="${days}"`)).join('')}</div><small>Saat boşsa gün sonu kabul edilir. Kaynaktan gelen saat korunur.</small></div><div class="field"><label for="assignment-time">Teslim saati (isteğe bağlı)</label><input id="assignment-time" name="due_time" type="time" value="${e(item?toAssignmentInput(item.due_at).slice(11,16):'')}"></div><fieldset class="assignment-priority-picker"><legend>Önem</legend><div>${Object.entries(assignmentPriorities).map(([value,label])=>`<label class="priority-option priority-${value}"><input type="radio" name="priority" value="${value}"${value===(item?.priority || 'normal')?' checked':''}><span><i aria-hidden="true"></i>${label}</span></label>`).join('')}</div></fieldset><details class="assignment-extra"><summary>Not ekle <span>İsteğe bağlı${item?.description?' · Kayıtlı not var':''}</span></summary><div class="field"><label for="assignment-description">Kendine not</label><textarea id="assignment-description" name="description" maxlength="5000" rows="2" placeholder="Eklemek istediğin bir ayrıntı…">${e(item?.description)}</textarea></div></details><div class="form-error"></div></div><div class="modal-foot">${button('close-modal','Vazgeç','light')}<button type="submit" class="btn primary">${item?'Kaydet':'Ödevi ekle'} ${icon('check')}</button></div></form>`);
   modal.classList.add('assignment-dialog');
   if(!item)modal.querySelector(preferredCourse?'#assignment-title':'#assignment-course')?.focus();
 
@@ -780,7 +800,7 @@ async function submitForm(form){
         if(error.status!==403 || error.code!=='email_verification_required') throw error;
         state.authMode='verify';renderAuth();toast(error.message,true);return;
       }
-      state.user=await api('/users/me');state.historyYear='';await loadWorkspace();location.hash=state.profile?'/overview':'/profile';render();toast('Hoş geldin.');
+      invalidateSessionRequests();state.user=await api('/users/me');state.historyYear='';await loadWorkspace();location.hash=state.profile?'/overview':'/profile';render();toast('Hoş geldin.');
     }else if(type==='register'){
       state.email=data.email.trim().toLowerCase();
       try{await api('/auth/register',{method:'POST',body:{email:state.email,full_name:data.full_name,password:data.password},quiet401:true});}
@@ -851,7 +871,7 @@ async function submitForm(form){
       const term=await api(editing?`/terms/${form.dataset.id}`:'/terms',{method:editing?'PATCH':'POST',body});
       cleanForm(form);
       state.terms = [term,...state.terms.filter(item=>item.id!==term.id)].sort((a,b)=>b.academic_year-a.academic_year || a.id-b.id);
-      state.termId=term.id;void refreshExams();await closeModal(true);
+      state.termId=term.id;rememberTerm();void refreshExams();void refreshCenter();await closeModal(true);
       if(editing) render(); else showTermCourses();toast(editing?'Dönemin güncellendi.':'Dönemin hazır. Şimdi derslerini ekleyebilirsin.');
     }else if(type==='custom-course' || type==='edit-course'){
       const editing=type==='edit-course';
@@ -867,7 +887,8 @@ async function submitForm(form){
       applyCourse(course);cleanForm(form);await closeModal(true);if(editing) render(); else showTermCourses();toast(editing?'Ders bilgilerin güncellendi.':'Kişisel dersin listeye eklendi.');
     }else if(type==='assignment'){
       const editing=Boolean(form.dataset.id);
-      const body={title:data.title.trim(),description:data.description.trim() || null,due_at:assignmentDateEnd(data.due_at),priority:data.priority};
+      const body={title:data.title.trim(),description:data.description.trim() || null,due_at:assignmentDueAt(data.due_at,data.due_time,editing?state.assignments.find(a=>a.id===Number(form.dataset.id))?.due_at:null),priority:data.priority};
+      if(editing && body.description===state.assignments.find(a=>a.id===Number(form.dataset.id))?.description)delete body.description;
       if(!editing)body.enrollment_id=Number(data.enrollment_id);
       const saved = await api(editing?`/assignments/${form.dataset.id}`:'/assignments',{method:editing?'PATCH':'POST',body});
       state.assignments = [...state.assignments.filter(item=>item.id!==saved.id),saved];
@@ -899,6 +920,7 @@ async function submitForm(form){
       await fetchSuggestions();
     }
   }catch(error){
+    if(error.name==='AbortError')return;
     if (type === 'send-verification' || type === 'request-reset') {
       const requests = type === 'request-reset' ? recoveryRequests : verificationRequests;
       const email = verificationEmail(data.email);
@@ -960,6 +982,7 @@ document.addEventListener('click',async event=>{
   const action=target.dataset.action, id=Number(target.dataset.id);
   try{
     if(action==='retry-workspace') await boot();
+    else if(action==='refresh-workspace'){if(!await canLeave(root))return;target.disabled=true;await loadWorkspace();renderDestination();toast('Verilerin güncellendi.');}
     else if(action==='toggle-program'){const picker=target.closest('.program-picker');const input=picker.querySelector('[role="combobox"]');input.focus();showProgramOptions(picker);}
     else if(action==='select-program')await chooseProgram(target.closest('.program-picker'),id,target.dataset.plan);
     else if(action==='toggle-login-password'){
@@ -971,9 +994,9 @@ document.addEventListener('click',async event=>{
       toggle.setAttribute('aria-label', visible ? 'Parolayı gizle' : 'Parolayı göster');
     }
     else if(action==='have-reset-code') showResetFields();
-    else if(action.startsWith('auth-')){state.email=root.querySelector('input[name="email"]')?.value || state.email;state.authMode=action.slice(5);renderAuth();}
+    else if(action.startsWith('auth-')){if(document.querySelector('form[data-saving="true"]')){toast('Devam eden işlemin tamamlanmasını bekle.');return;}state.email=root.querySelector('input[name="email"]')?.value || state.email;state.authMode=action.slice(5);renderAuth();}
     else if(action==='logout'){
-      await api('/auth/logout',{method:'POST',quiet401:true});state.user=null;state.profile=null;state.courses=[];state.assignments=[];state.assignmentTermId=null;state.assignmentFilter='all';state.assignmentQuery='';state.assignmentArchives=false;state.terms=[];state.examCalendars=[];state.examSync=null;state.termId=null;state.status='all';state.archives=false;state.courseQuery='';state.courseSort='name';state.courseView='cards';state.authMode='login';closeModal(true);renderAuth();toast('Güvenli şekilde çıkış yaptın.');
+      await api('/auth/logout',{method:'POST',quiet401:true});invalidateSessionRequests();++workspaceRequest;++centerRequest;state.center={};state.user=null;state.profile=null;state.courses=[];state.assignments=[];state.assignmentTermId=null;state.assignmentFilter='all';state.assignmentQuery='';state.assignmentArchives=false;state.assignmentSort='due';state.terms=[];state.examCalendars=[];state.examSync=null;state.termId=null;state.status='all';state.archives=false;state.courseQuery='';state.courseSort='name';state.courseView='cards';state.authMode='login';closeModal(true);renderAuth();toast('Güvenli şekilde çıkış yaptın.');
     }else if(action==='toggle-menu' || action==='close-menu'){
       setMobileMenu(root,action==='close-menu'?false:!root.querySelector('.workspace')?.classList.contains('menu-open'));
     }else if(action==='close-modal')await closeModal();
@@ -1015,7 +1038,7 @@ document.addEventListener('click',async event=>{
       try{await api('/exams/selection',{method:'PUT',body:{enrollment_id:id,exam_type:target.dataset.examType,document_id:Number(target.dataset.document),sheet:target.dataset.sheet,row_number:Number(target.dataset.row)}});void refreshExams();toast('Sınav grubun kaydedildi.');}finally{target.disabled=false;}
     }
     else if(action==='previous-course-results')openPreviousResults(id);
-    else if(action==='view-term'){state.termId=id;state.archives=false;showTermCourses();}
+    else if(action==='view-term'){state.termId=id;rememberTerm();void refreshCenter();state.archives=false;showTermCourses();}
     else if(action==='course-tab' || action==='custom-tab'){
       ++requestCounter;state.modalTab=action==='custom-tab'?'custom':target.dataset.tab;drawCourseDialog();if(state.modalTab!=='custom')await fetchSuggestions();
     }else if(action==='pick-required'){
@@ -1058,7 +1081,7 @@ document.addEventListener('change',async event=>{
     else if(action==='assignment-sort'){state.assignmentSort=target.value;refreshAssignmentResults();}
     else if(action==='assignment-archives'){state.assignmentArchives=target.checked;render();root.querySelector('[data-change="assignment-archives"]')?.focus({preventScroll:true});}
     else if(action==='course-sort'){state.courseSort=target.value;refreshCourseResults();}
-    else if(action==='active-term'){state.termId=Number(target.value) || null;render();root.querySelector('[data-change="active-term"]')?.focus({preventScroll:true});}
+    else if(action==='active-term'){if(!await canLeave(root)){target.value=state.termId||'';return;}state.termId=Number(target.value) || null;rememberTerm();void refreshCenter();render();root.querySelector('[data-change="active-term"]')?.focus({preventScroll:true});}
     else if(action==='show-archives'){state.archives=target.checked;render();}
     else if(form?.dataset.form === 'profile') {
       const fields = form.elements;
@@ -1169,10 +1192,13 @@ async function boot(){
     try{state.user=await api('/users/me',{quiet401:true});}catch(error){if(error.status!==401)throw error;}
     if(state.user){await loadWorkspace();renderDestination();}else {renderAuth();if(location.hash.includes('microsoft_error=1')){history.replaceState(null,'','#/login');toast('Okul hesabıyla giriş tamamlanamadı. Haliç öğrenci hesabını seçip tekrar dene. Okul yönetici onayı gerekebilir.',true);}}
   }catch(error){
+    if(error.name==='AbortError')return;
     if(error.status===401) return renderAuth();
     root.innerHTML=emptyState('Öğrenci alanı yüklenemedi',error.message,'retry-workspace','Yeniden dene');
   }
 }
+window.addEventListener('offline',()=>toast('İnternet bağlantısı kesildi. Kaydetmediğin bilgileri açık tutup yeniden deneyebilirsin.',true));
+window.addEventListener('online',()=>toast('İnternet bağlantısı yeniden kuruldu. Verileri yenileyebilirsin.'));
 boot();
 
 function examsView(){return examUI.page(state);}

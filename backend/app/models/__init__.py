@@ -14,3 +14,5 @@ __all__ = ['User', 'AuthRateLimit', 'EmailVerification', 'AcademicProfile', 'Aca
 from app.models.exam import ExamDocument, ExamSyncState, ExamSelection
 
 from app.models.halicx import HalicxConnection, HalicxItem
+
+from app.models.study_session import StudySession

@@ -14,11 +14,21 @@ Google Classroom bağlantısı ve öğrenci bazlı ders/ödev aktarımı: [Class
 
 Haliç Üniversitesi öğrencilerinin bölümüne ve müfredatına uygun dersleri bulmasını, kişisel dönemlerini oluşturmasını ve ders geçmişini tek yerde tutmasını sağlayan web uygulaması.
 
-Proje, Advanced Computer Programming dersi kapsamında geliştiriliyor. Mevcut sürüm; akademik katalog, kullanıcı kaydı ve e-posta doğrulama, akademik profil, kişisel dönemler, ders yönetimi ve derslere bağlı ödev takibini kapsar. Resmi duyurulardan sınav takibi eklenmiştir; çalışma süresi takibi sonraki aşamadır.
+Proje, Advanced Computer Programming dersi kapsamında geliştiriliyor. Mevcut sürüm; akademik katalog, kullanıcı kaydı ve e-posta doğrulama, akademik profil, kişisel dönemler, ders ve ödev yönetimi, sınav takibi, HaliçX materyalleri ve kişisel çalışma günlüğünü tek öğrenci merkezinde birleştirir. HaliçX ve Google Classroom bağlantıları isteğe bağlıdır; üniversitenin resmî kayıt ve teslim sistemlerinin yerini almaz.
 
 > HalicMind'de ders seçmek üniversitenin resmi ders kayıt sisteminde işlem yapmaz. Ders geçmişi ve sonuçları öğrenci tarafından girilir; OBS/SSO veya transkript entegrasyonu bulunmaz.
 
 ## Mevcut özellikler
+
+- **Öğrenci merkezi:** Dönem ajandası, HaliçX/Classroom durumu, son materyaller, yeni içerik sayısı ve resmî Haliç sistemlerine hızlı erişim aynı paneldedir.
+- **Materyaller:** Ders/dönem araması, okunmamış filtresi, kişisel dosya indirme ve kaynak bağlantıları.
+- **Çalışma günlüğü:** Ders, gün, dakika ve not kaydı; son 7 günün kayıt özeti; arşiv ve geri yükleme. Süreler kullanıcı tarafından girilir.
+- **Kişisel veri kopyası:** Akademik profilden JSON dışa aktarma. Parola ve bağlantı anahtarları dışa aktarılmaz; dosya kopyaları Materyaller ekranından indirilir.
+- **Saatli ödevler:** Düzenleme kaynak teslim saatini korur; gecikme gerçek teslim anına göre hesaplanır.
+
+Bu özelliklerin veritabanı göçü `0012_student_center` revision'ıdır. Mevcut dağıtımın şeması değiştirilmeden, yeni kod yayınlanmadan önce uygulanmalıdır.
+
+Resmî bağlantıların kaynağı: [Haliç-X ve OBS açıklaması](https://halic.edu.tr/tr/halic-x), [öğrenci hizmetleri](https://halic.edu.tr/tr/ogrencimiz) ve [akademik takvim](https://halic.edu.tr/tr/ogrencimiz/akademik-takvim/2026-2027-akademik-takvim).
 
 - **Akademik katalog:** Akademik birimler, programlar, müfredatlar ve dersler; program/müfredat filtreleri ve ders araması.
 - **Kayıt ve giriş:** Yalnızca `ogr_no@ogr.halic.edu.tr` biçimindeki öğrenci adresleri, normalize edilmiş benzersiz e-posta, Argon2 parola özeti ve JWT ile kimlik doğrulama.
@@ -52,7 +62,7 @@ Arayüz için Node.js kurulumu veya frontend derleme adımı gerekmez. Docker Co
 Python 3.12 ve Docker Compose v2 (`--wait` destekli) ile başlayın. Depoyu klonladıktan sonra bütün komutları `compose.yml` dosyasının bulunduğu klasörde çalıştırın.
 
 ```sh
-git clone https://github.com/Sametkrlii/HalicMind.git
+git clone https://github.com/halicmind/Halic-Mind-Source.git
 cd HalicMind
 ```
 

@@ -18,6 +18,14 @@ def pair(env):
 def data(title='Ödev',due='2026-12-01T20:59:00Z'):
     return {'account':'a'*64,'courses':[{'id':'12','name':'Örnek ders','items':[{'id':'assign:23','kind':'assignment','title':title,'description':'Açıklama','url':'https://huzem.halic.edu.tr/UE2/mod/assign/view.php?id=23','due_at':due},{'id':'file:24:0123456789abcdef','kind':'material','title':'Ders.pdf','url':'https://huzem.halic.edu.tr/UE2/pluginfile.php/1/test/Ders.pdf'}]}]}
 
+def test_empty_paired_term_explains_how_to_delete(academic_app):
+    env=academic_app;headers,tid=pair(env)
+    result=env.client.delete(f'/api/v1/terms/{tid}')
+    assert result.status_code==409 and 'HaliçX bağlantısını kaldırın' in result.json()['detail']
+    assert env.client.get('/api/v1/integrations/halicx/settings',headers=headers).status_code==200
+    assert env.client.delete('/api/v1/integrations/halicx',headers=H).status_code==204
+    assert env.client.delete(f'/api/v1/terms/{tid}').status_code==204
+
 def test_sync_ownership_idempotence_and_completion(academic_app):
     env=academic_app;headers,tid=pair(env)
     r=env.client.post('/api/v1/integrations/halicx/sync',headers=headers,json=data());assert r.status_code==200,r.text
@@ -111,3 +119,18 @@ def test_full_item_quota_allows_existing_content_updates(academic_app):
     assert r.status_code==200 and r.json()['changed']==1
     payload=data('Güncel');payload['courses'][0]['items'].append({'id':'folder:999999','kind':'material','title':'Klasör','url':'https://huzem.halic.edu.tr/UE2/mod/folder/view.php?id=999999'})
     assert env.client.post('/api/v1/integrations/halicx/sync',headers=headers,json=payload).status_code==413
+
+def test_renamed_halicx_course_keeps_immutable_source_identity(academic_app):
+    env=academic_app;headers,tid=pair(env)
+    r=env.client.post('/api/v1/integrations/halicx/sync',headers=headers,json=data());assert r.status_code==200
+    course=env.client.get('/api/v1/enrollments').json()[0]
+    assert course['halicx_source_id']=='12'
+    assert env.client.patch('/api/v1/enrollments/'+str(course['id']),json={'custom_course_code':'IOT4100'}).status_code==200
+    assert env.client.post('/api/v1/integrations/halicx/sync',headers=headers,json=data()).status_code==200
+    assert env.connection.scalar(text('SELECT count(*) FROM enrollments'))==1
+    assert env.client.get('/api/v1/enrollments').json()[0]['course_code']=='IOT4100'
+    # Older imported records can also be recovered after a manual rename.
+    env.connection.execute(text('UPDATE enrollments SET halicx_source_id=NULL'))
+    assert env.client.post('/api/v1/integrations/halicx/sync',headers=headers,json=data()).status_code==200
+    assert env.connection.scalar(text('SELECT count(*) FROM enrollments'))==1
+    assert env.client.get('/api/v1/enrollments').json()[0]['halicx_source_id']=='12'
