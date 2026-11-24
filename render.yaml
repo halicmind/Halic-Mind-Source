@@ -14,7 +14,7 @@ services:
       - key: JWT_SECRET_KEY
         generateValue: true
       - key: PUBLIC_ORIGIN
-        value: https://halic-mind-source.onrender.com
+        value: https://halicmind.com
       - key: SERVE_FRONTEND
         value: true
       - key: MAIL_PROVIDER

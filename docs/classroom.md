@@ -6,7 +6,7 @@ Each verified HalicMind student connects their own Google account from **Bağlan
 
 Enable **Google Classroom API** in the existing HalicMind Google Cloud project. Create a **Web application** OAuth client with this authorized redirect URI:
 
-`https://halic-mind-source.onrender.com/api/v1/integrations/google/callback`
+`https://halicmind.com/api/v1/integrations/google/callback`
 
 Declare these Classroom scopes in Google Auth Platform → Data Access:
 
@@ -25,7 +25,7 @@ Apply migration `0009_classroom` before deploying the new code. Set these only i
 CLASSROOM_CLIENT_ID=<Web-client-id>
 CLASSROOM_CLIENT_SECRET=<Web-client-secret>
 INTEGRATION_ENCRYPTION_KEY=<independent-Fernet-key>
-PUBLIC_ORIGIN=https://halic-mind-source.onrender.com
+PUBLIC_ORIGIN=https://halicmind.com
 ```
 
 Keep a secure copy of the encryption key; changing it makes saved Google connections unreadable and students will need to reconnect. Never expose it, refresh tokens or the client secret in Pages or Git. The ignored `.env.classroom` file is only a local setup handoff. Do not replace Gmail or JWT secrets.
