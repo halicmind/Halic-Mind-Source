@@ -25,3 +25,18 @@ test('conflict and network failures remain readable general errors',async t=>{
  globalThis.fetch=async()=>{throw new TypeError('Network failure');};
  await assert.rejects(api('/enrollments'),error=>error.status===0 && error.message.includes('Bağlantı kurulamadı'));
 });
+
+
+test('temporary gateway failures retry reads without repeating writes',async t=>{
+ t.mock.method(globalThis,'setTimeout',(fn)=>{queueMicrotask(fn);return 0;});
+ let calls=0;
+ t.mock.method(globalThis,'fetch',async()=>++calls===1?new Response('origin failure',{status:520}):new Response(JSON.stringify({id:1}),{status:200}));
+ assert.deepEqual(await api('/users/me'),{id:1});
+ assert.equal(calls,2);
+ calls=0;
+ globalThis.fetch=async()=>{calls++;return new Response('origin failure',{status:520});};
+ await assert.rejects(api('/enrollments',{method:'POST',body:{}}),error=>error.status===520 && error.message.includes('Sunucu'));
+ assert.equal(calls,1);
+ await assert.rejects(api('/users/me'),error=>error.status===520 && error.message.includes('Sunucu'));
+ assert.equal(calls,6);
+});

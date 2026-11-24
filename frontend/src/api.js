@@ -25,8 +25,16 @@ export async function api(path, {method='GET',body,form=false,quiet401=false,sig
   if (body !== undefined) headers['Content-Type'] = form ? 'application/x-www-form-urlencoded' : 'application/json';
   let response;
   try {
+    for (let attempt = 0; ; attempt++) {
     response = await fetch(`/api/v1${path}`, {method,headers,credentials:'same-origin',signal,
       body:body === undefined ? undefined : form ? new URLSearchParams(body) : JSON.stringify(body)});
+    if (method !== 'GET' || ![502,503,504,520,521,522,523,524].includes(response.status) || attempt >= 4) break;
+    await new Promise((resolve,reject) => {
+      const cancel = () => { clearTimeout(timer); reject(new DOMException('Aborted','AbortError')); };
+      const timer = setTimeout(() => { signal?.removeEventListener('abort',cancel); resolve(); }, Math.min(2000 * 2 ** attempt, 10000));
+      if (signal?.aborted) cancel(); else signal?.addEventListener('abort',cancel,{once:true});
+    });
+    }
   } catch (error) {
     if (error.name === 'AbortError') throw error;
     throw new ApiError('Bağlantı kurulamadı. İnternet bağlantını ve uygulamanın açık olduğunu kontrol et.',0);
@@ -35,6 +43,9 @@ export async function api(path, {method='GET',body,form=false,quiet401=false,sig
   const data = await response.json().catch(() => null);
   if (!response.ok) {
     if (response.status === 401 && !quiet401) onUnauthorized();
+    if ([502,503,504,520,521,522,523,524].includes(response.status)) {
+      throw new ApiError('Sunucu şu anda hazırlanıyor veya geçici olarak yanıt veremiyor. Biraz bekleyip yeniden dene.', response.status);
+    }
     const retry = Number(response.headers.get('Retry-After') || 0);
     const fields={};if(Array.isArray(data?.detail))for(const error of data.detail){const name=error.loc?.at(-1);if(name && name!=='body')fields[name]=errorMessage({detail:[error]});}
     let code = response.headers.get('X-HalicMind-Error');
