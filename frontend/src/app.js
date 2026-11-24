@@ -95,7 +95,7 @@ function renderLegal(){
   const key=location.hash.split('/')[2] || 'privacy';
   if(!Object.hasOwn(legalTitles,key))return false;
   closeModal(true);
-  root.innerHTML=`<div class="legal-layout"><header>${brand()}<a href="#/${state.user?'overview':'login'}" class="btn light">${icon('arrow')}Uygulamaya dön</a></header><main id="main-content" class="legal-page" tabindex="-1"><div class="eyebrow">Bilgilendirme · 28 Ekim 2026</div><h1>${e(legalTitles[key])}</h1>${legalContent(key,state.config,e)}</main>${siteFooter()}</div>`;
+  root.innerHTML=`<div class="legal-layout"><header>${brand()}<a href="#/${state.user?'overview':'login'}" class="btn light">${icon('arrow')}Uygulamaya dön</a></header><main id="main-content" class="legal-page" tabindex="-1"><div class="eyebrow">Bilgilendirme · 24 Kasım 2026</div><h1>${e(legalTitles[key])}</h1>${legalContent(key,state.config,e)}</main>${siteFooter()}</div>`;
   prepareAccessibility(root);return true;
 }
 function isLegal(){return location.hash.startsWith('#/legal/');}

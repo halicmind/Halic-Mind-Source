@@ -1,7 +1,7 @@
 import asyncio
 from contextlib import asynccontextmanager
 from pathlib import Path
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.exception_handlers import request_validation_exception_handler
 from fastapi.responses import FileResponse, JSONResponse
@@ -29,6 +29,8 @@ async def lifespan(app):
 app = FastAPI(title=settings.application_name, version='0.2.0', lifespan=lifespan)
 app.include_router(router, prefix='/api/v1')
 FRONTEND_ROOT = Path(__file__).resolve().parents[2] / 'frontend'
+if not FRONTEND_ROOT.is_dir():
+    FRONTEND_ROOT = Path(__file__).resolve().parents[3] / 'frontend'
 SERVE_FRONTEND = settings.serve_frontend and (FRONTEND_ROOT / 'index.html').is_file()
 if SERVE_FRONTEND:
     app.mount('/assets', StaticFiles(directory=FRONTEND_ROOT / 'src'), name='assets')
@@ -39,6 +41,19 @@ def student_interface():
     if SERVE_FRONTEND:
         return FileResponse(FRONTEND_ROOT / 'index.html', headers={'Cache-Control': 'no-cache'})
     return {'application': settings.application_name, 'service': 'api', 'docs': '/docs', 'health': '/health'}
+
+
+@app.get('/about/', include_in_schema=False)
+@app.get('/privacy/', include_in_schema=False)
+@app.get('/terms/', include_in_schema=False)
+def public_information(request: Request):
+    slug = request.url.path.strip('/')
+    return FileResponse(FRONTEND_ROOT / 'public' / slug / 'index.html', headers={'Cache-Control': 'no-cache'})
+
+
+@app.get('/legal.css', include_in_schema=False)
+def public_information_styles():
+    return FileResponse(FRONTEND_ROOT / 'public' / 'legal.css', media_type='text/css')
 
 
 @app.get('/api/v1/ui-config', include_in_schema=False)
@@ -59,7 +74,7 @@ async def browser_headers(request, call_next):
     response = await call_next(request)
     response.headers['X-Content-Type-Options'] = 'nosniff'
     response.headers['Referrer-Policy'] = 'no-referrer'
-    if request.url.path == '/' or request.url.path.startswith('/assets/'):
+    if request.url.path in {'/', '/about/', '/privacy/', '/terms/', '/legal.css'} or request.url.path.startswith('/assets/'):
         response.headers['Content-Security-Policy'] = (
             "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; "
             "connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'; "

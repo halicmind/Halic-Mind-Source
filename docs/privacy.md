@@ -27,3 +27,12 @@ Sadece sayfa eklenmesiyle hukuki uygunluk tamamlanmış sayılmaz. Teknik metinl
 
 - [KVKK — Aydınlatma Yükümlülüğü](https://www.kvkk.gov.tr/Icerik/2033/Aydinlatma-Yukumlulugu-)
 - [KVKK — Aydınlatma Yükümlülüğü Hakkında Kamuoyu Duyurusu](https://www.kvkk.gov.tr/Icerik/6765/AYDINLATMA-YUKUMLULUGUNUN-YERINE-GETIRILMESI-HAKKINDA-KAMUOYU-DUYURUSU)
+
+## Canlı Google OAuth bağlantıları (24 Kasım 2026)
+
+Giriş, JavaScript veya API erişimi gerektirmeyen sayfalar:
+- `/about/`: uygulama tanıtımı ve politika bağlantıları.
+- `/privacy/`: canlı altyapı, Classroom izinleri, kullanım, saklama ve silme talepleri.
+- `/terms/`: kullanım koşulları ve akademik sınırlar.
+
+Metinlerin kaynağı `frontend/src/policies.js`; statik sayfalar `node frontend/build-public.mjs` ile yenilenir. Pages build bunu otomatik çalıştırır. Render aynı dosyaları herkese açık rotalardan sunar. İletişim halicmind@gmail.com; bu iletişim adresi veri sorumlusunun hukuki kimliğinin belirlendiği anlamına gelmez. KVKK taslağındaki kişi/kurum kimliği ve faaliyet bazında hukuki sebepler ayrıca tamamlanmalıdır. Bu sayfalar Google doğrulama onayı garantisi değildir.
