@@ -23,12 +23,12 @@ if (universe) {
  const reduced = matchMedia('(prefers-reduced-motion: reduce)');
  const narrow = matchMedia('(max-width: 760px)');
  const samples = [
-  ['CEN 4100', 'Nesnelerin İnterneti', 'DERS NOTLARI', '07', 'Bağlantılı bir dünya.', 'notes'],
-  ['TESLİM TAKVİMİ', 'Önündeki adım belli.', 'BU HAFTA', '29', 'Kasım · Pazar / 23.59', 'date'],
-  ['MAT 201', 'Bir fikrin geometrisi.', 'ÇALIŞMA ALANI', '∑', 'Matematik · 5 AKTS', 'math'],
-  ['KİŞİSEL AJANDAN', 'Biraz daha ferah.', 'HAFTANIN PLANI', '03', 'Küçük adımlar. Büyük fark.', 'plan'],
-  ['TAS 201', 'Fikirden projeye.', 'PROJE DOSYASI', '↗', 'Tasarım stüdyosu · 6 AKTS', 'project'],
-  ['DÖNEM GÖRÜNÜMÜ', 'Yeni bir sayfa.', 'GÜZ / BAHAR', '26', 'Kendi ritminde ilerle.', 'term'],
+  ['CEN 4100', 'Nesnelerin İnterneti', 'DERS NOTLARI', '07', 'Hafta 07 · Ders notları', 'notes'],
+  ['TESLİM TAKVİMİ', 'Proje teslimi', 'BU HAFTA', '29', 'Kasım · Pazar / 23.59', 'date'],
+  ['MAT 201', 'Lineer Cebir', 'ÇALIŞMA ALANI', '∑', 'Matematik · 5 AKTS', 'math'],
+  ['KİŞİSEL AJANDAN', 'Haftalık plan', 'HAFTANIN PLANI', '03', '2 görev · 1 tamamlandı', 'plan'],
+  ['TAS 201', 'Dönem projesi', 'PROJE DOSYASI', '↗', 'Tasarım stüdyosu · 6 AKTS', 'project'],
+  ['DÖNEM GÖRÜNÜMÜ', '2026–2027', 'GÜZ / BAHAR', '26', 'Akademik yıl', 'term'],
  ];
  const structure = document.querySelector('#cylinder-structure');
  const dust = document.querySelector('#scene-dust');
@@ -142,7 +142,7 @@ if (universe) {
   const inert=!reduced.matches && p>.22;if(copy.inert!==inert)copy.inert=inert;
   const phase=p<.3?0:p<.7?1:2;
   if(phase!==lastPhase) {
-   const labels=[['Dönemine yukarıdan bak.','Büyük resmi gör.'],['Derslerinin arasına gir.','Her katmanda yeni bir fikir.'],['Kendi alanına hoş geldin.','Artık her şey elinin altında.']];
+   const labels=[['Bir dönem, tek görünüm.','Derslerini bir arada gör.'],['Notların ve ödevlerin.','Derslere göre düzenli.'],['Teslim tarihlerin.','Haftanı buradan planla.']];
    caption.innerHTML=labels[phase][0]+'<br><em>'+labels[phase][1]+'</em>';index.textContent=`0${phase+1} / 03`;lastPhase=phase;
   }
   const depthStep=p<.08?0:Math.round(p*100);

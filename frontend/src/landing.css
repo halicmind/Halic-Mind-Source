@@ -23,3 +23,6 @@
 .scene-progress i{width:100%;transform:scaleX(0);transform-origin:left}.depth-track i{top:0}.scene-caption:before{content:'';position:absolute;z-index:-1;inset:-35px -20vw -45px;background:radial-gradient(ellipse,#060b19bd,transparent 70%);pointer-events:none}
 /* Keep moving surfaces cheap to composite; lighting lives on the shared floor and rim. */
 .gallery-panel{box-shadow:none;border:1px solid #b7c9f075}.cylinder-rim{box-shadow:0 0 12px #5a86ff33}.cylinder-rim:after{inset:9px}.scene-dust i{box-shadow:none}.scene-floor{box-shadow:none}.scene-caption:before{z-index:0}.scene-caption>*{position:relative;z-index:1}
+
+/* Remove decorative labels without changing scene geometry or motion. */
+.scene-coordinate,.scene-hud>span,.closing-flower,.panel-foot>span:last-child{visibility:hidden}
