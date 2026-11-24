@@ -22,6 +22,7 @@ export async function mountConnections(panel, { terms, onImported, e }) {
         <button class="btn primary" data-classroom-action="connect" ${busy ? 'disabled' : ''}>Google Classroom’u bağla</button>` : `
         <p><strong>${e(connection.email)}</strong> bağlı.${connection.last_sync_at ? ` Son aktarım: ${e(date(connection.last_sync_at))}.` : ''}</p>
         <button class="btn light" data-classroom-action="disconnect" ${busy ? 'disabled' : ''}>Bağlantıyı kaldır</button>
+        <button class="btn light" data-classroom-action="connect" ${busy ? 'disabled' : ''}>Google izinlerini yenile</button>
         <button class="btn light" data-classroom-action="reload" ${busy ? 'disabled' : ''}>Dersleri yenile</button>
         ${!terms.length ? '<p>Aktarmadan önce <a href="#/profile">akademik profilini ve dönemini oluştur</a>.</p>' : `
         <form data-classroom-form>
@@ -40,12 +41,16 @@ export async function mountConnections(panel, { terms, onImported, e }) {
           <p>${preview.undated_count} ödevin teslim tarihi bulunmadığı için aktarılmayacak. Saatler İstanbul saatidir.</p>
           <button class="btn primary" data-classroom-action="import" ${busy ? 'disabled' : ''}>Onayla ve döneme aktar</button>
         </section>` : ''}`}
+      ${!busy && !connection ? '<button class="btn light" data-classroom-action="reload">Bağlantıyı tekrar kontrol et</button>' : ''}
       ${busy ? '<p role="status">İşlem sürüyor…</p>' : ''}
     </div>`;
   }
   async function load() {
     connection = await api('/integrations/google');
+    courses = [];
     courses = connection.enabled && connection.connected ? await api('/integrations/google/courses') : [];
+    const available=new Set(courses.map(c=>c.id));
+    for(const id of selected)if(!available.has(id))selected.delete(id);
   }
   async function run(action) {
     if (busy) return;
@@ -69,8 +74,9 @@ export async function mountConnections(panel, { terms, onImported, e }) {
         preview = null; await load();
       } else if (action === 'import' && preview) {
         const result = await api('/integrations/google/import', {method:'POST', body:{preview_id:preview.preview_id}});
-        preview = null; await onImported(); await load();
-        notice = `${result.courses_created} ders ve ${result.assignments_created} ödev eklendi; ${result.assignments_updated} ödev güncellendi. ${result.archived_skipped} arşivli, ${result.undated_skipped} tarihsiz kayıt aktarılmadı.`;
+        preview = null;
+        notice = `${result.courses_created} ders ve ${result.assignments_created} ödev eklendi; ${result.assignments_updated} ödev güncellendi. ${result.archived_skipped} arşivli, ${result.undated_skipped} tarihsiz kayıt aktarılmadı. ${result.assignments_unchanged||0} ödev zaten güncel.`;
+        try { await onImported(); await load(); } catch { error='Aktarım kaydedildi; güncel liste alınamadı. Sayfayı yenileyebilirsin.'; }
       }
     });
   });

@@ -32,10 +32,15 @@ def redirect_uri():
 def _json(request):
     try:
         with urlopen(request, timeout=15) as response:
-            return json.load(response)
+            data=json.load(response)
+            if not isinstance(data,dict):
+                raise ValueError('Invalid provider response')
+            return data
     except HTTPError as error:
         if error.code in (400, 401):
             raise HTTPException(409, 'Google bağlantısının yenilenmesi gerekiyor. Hesabını tekrar bağla.') from None
+        if error.code == 429:
+            raise HTTPException(503, 'Google Classroom istek sınırına ulaşıldı. Biraz bekleyip tekrar dene.', headers={'Retry-After':'60'}) from None
         if error.code == 403:
             raise HTTPException(403, 'Classroom erişimine izin verilmedi. Google izinlerini, Classroom API ayarını ve okul politikasını kontrol et.') from None
         raise HTTPException(502, 'Google Classroom şu anda yanıt veremiyor. Daha sonra tekrar dene.') from None
@@ -161,7 +166,7 @@ def import_preview(db, user_id, preview_id):
     data = row.preview_data
     term = owned_term(db, user_id, data['term_id'], lock=True)
     counts = {'courses_created': 0, 'assignments_created': 0, 'assignments_updated': 0,
-              'archived_skipped': 0, 'undated_skipped': data['undated_count']}
+              'archived_skipped': 0, 'undated_skipped': data['undated_count'], 'assignments_unchanged': 0}
     for course in data['courses']:
         identity = source_id(row.google_subject, course['id'])
         enrollment = db.scalar(select(Enrollment).where(Enrollment.user_id == user_id, Enrollment.term_id == term.id,
@@ -176,6 +181,7 @@ def import_preview(db, user_id, preview_id):
         if enrollment.archived_at:
             counts['archived_skipped'] += len(course['assignments'])
             continue
+        enrollment.course_name=course['name'] or enrollment.course_name
         for work in course['assignments']:
             identity = source_id(row.google_subject, course['id'], work['id'])
             assignment = db.scalar(select(Assignment).where(Assignment.user_id == user_id,
@@ -188,6 +194,9 @@ def import_preview(db, user_id, preview_id):
                     status='pending', classroom_source_id=identity)
                 db.add(assignment)
                 counts['assignments_created'] += 1
+            elif (assignment.title,assignment.description,assignment.due_at) == (work['title'],work['description'],datetime.fromisoformat(work['due_at'])):
+                counts['assignments_unchanged'] += 1
+                continue
             else:
                 counts['assignments_updated'] += 1
             assignment.title, assignment.description = work['title'], work['description']

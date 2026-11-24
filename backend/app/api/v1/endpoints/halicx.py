@@ -5,7 +5,7 @@ import json
 import secrets
 from urllib.parse import urlsplit, parse_qs
 from typing import Annotated, Literal
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Query
 from fastapi.responses import Response
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import select, func
@@ -27,7 +27,7 @@ class Strict(BaseModel):
 class Pair(Strict):
     term_id: int = Field(gt=0)
 class Item(Strict):
-    id: str = Field(pattern=r'^(assign|resource|file|url|page):[0-9]+(?::[a-f0-9]{16})?$')
+    id: str = Field(pattern=r'^(assign|resource|file|url|page|folder):[0-9]+(?::[a-f0-9]{16})?$')
     kind: Literal['assignment','material']
     title: str = Field(min_length=1,max_length=200)
     description: str | None = Field(default=None,max_length=10000)
@@ -60,6 +60,9 @@ class Selection(Strict):
         if len(set(v))!=len(v) or any(not x.isdigit() or len(x)>12 for x in v):raise ValueError('Invalid course IDs')
         return v
 
+class ErrorReport(Strict):
+    code: Literal['source_unavailable', 'files_incomplete', 'account_changed'] = 'source_unavailable'
+
 @router.post('/pair')
 def pair(data:Pair,request:Request,user:CurrentUser,db:DB):
     validate_web_request(request);owned_term(db,user.id,data.term_id)
@@ -76,7 +79,9 @@ def pair(data:Pair,request:Request,user:CurrentUser,db:DB):
 @router.get('')
 def status(user:CurrentUser,db:DB):
     row=db.get(HalicxConnection,user.id)
-    return {'connected':bool(row and row.token_hash),'expires_at':row.expires_at if row else None,
+    valid=bool(row and row.token_hash and row.expires_at>datetime.now(timezone.utc) and row.session_version==user.session_version)
+    return {'connected':valid,'paired':bool(row and row.token_hash),'term_id':row.term_id if row else None,
+            'needs_repair':bool(row and row.token_hash and not valid),'expires_at':row.expires_at if row else None,
             'last_sync_at':row.last_sync_at if row else None,'last_error':row.last_error if row else None,
             'selected_courses':row.selected_courses if row else [],
             'unread':db.scalar(select(func.count()).select_from(HalicxItem).where(HalicxItem.user_id==user.id,HalicxItem.unread.is_(True)))}
@@ -119,13 +124,17 @@ def sync(data:Sync,row:Extension,db:DB):
     if len(set(ids))!=len(ids) or not set(ids).issubset(set(row.selected_courses)):raise HTTPException(403,'Seçilmeyen ders aktarılamaz.')
     if sum(len(c.items) for c in data.courses)>1000:raise HTTPException(422,'Tek kontrolde en fazla 1000 içerik.')
     existing_count=db.scalar(select(func.count()).select_from(HalicxItem).where(HalicxItem.user_id==row.user_id))
-    if existing_count>=5000:raise HTTPException(413,'İçerik sınırına ulaşıldı.')
-    changed=0;uploads=[]
+    changed=0;uploads=[];archived_skipped=0
     for course in data.courses:
         code='HX-'+course.id
-        enrollment=db.scalar(select(Enrollment).where(Enrollment.user_id==row.user_id,Enrollment.term_id==row.term_id,Enrollment.course_code==code,Enrollment.course_id.is_(None),Enrollment.archived_at.is_(None)))
+        enrollment=db.scalar(select(Enrollment).where(Enrollment.user_id==row.user_id,Enrollment.term_id==row.term_id,Enrollment.course_code==code,Enrollment.course_id.is_(None)).order_by(Enrollment.archived_at.asc().nullsfirst(),Enrollment.id.desc()))
+        if enrollment is not None and enrollment.archived_at is not None:
+            archived_skipped+=len(course.items)
+            continue
         if enrollment is None:
             enrollment=Enrollment(user_id=row.user_id,term_id=row.term_id,course_code=code,course_name=course.name,status='in_progress');db.add(enrollment);db.flush()
+        else:
+            enrollment.course_name=course.name
         seen=set()
         for item in course.items:
             sid=course.id+':'+item.id
@@ -137,7 +146,10 @@ def sync(data:Sync,row:Extension,db:DB):
                 existing_count+=1
                 if existing_count>5000:raise HTTPException(413,'İçerik sınırına ulaşıldı.')
                 entry=HalicxItem(user_id=row.user_id,term_id=row.term_id,enrollment_id=enrollment.id,source_id=sid,file_size=0);db.add(entry)
-            if entry.content_hash!=fingerprint:
+            # Repair records from older clients that recreated an archived enrollment.
+            entry.enrollment_id=enrollment.id
+            content_changed=entry.content_hash!=fingerprint
+            if content_changed:
                 entry.unread=True;changed+=1
                 entry.title=item.title;entry.description=item.description;entry.kind=item.kind;entry.source_url=item.url;entry.content_hash=fingerprint
                 if item.kind=='assignment' and item.due_at:
@@ -147,16 +159,19 @@ def sync(data:Sync,row:Extension,db:DB):
                     if assignment.archived_at is None:
                         assignment.title=item.title;assignment.description=item.description;assignment.due_at=item.due_at
             db.flush()
-            if item.id.startswith('file:'):uploads.append({'source_id':item.id,'item_id':entry.id,'file_hash':entry.file_hash})
+            if item.id.startswith('file:'):uploads.append({'source_id':item.id,'item_id':entry.id,'file_hash':entry.file_hash,'content_changed':content_changed})
     missing_dates=sum(i.kind=='assignment' and i.due_at is None for c in data.courses for i in c.items)
     warning=f'{missing_dates} ödevin tarihi okunamadı; HaliçX üzerinden doğrula.' if missing_dates else None
     row.source_account=data.account;row.last_sync_at=datetime.now(timezone.utc);row.last_error=warning
-    db.commit();return {'changed':changed,'uploads':uploads,'last_sync_at':row.last_sync_at,'warning':warning}
+    db.commit();return {'changed':changed,'uploads':uploads,'last_sync_at':row.last_sync_at,'warning':warning,'archived_skipped':archived_skipped}
 
 @router.post('/error')
-def report_error(request:Request,row:Extension,db:DB):
+def report_error(request:Request,row:Extension,db:DB,data:ErrorReport=ErrorReport()):
     # No provider error text, URLs or credentials are accepted.
-    row.last_error='HaliçX oturumunu ve eklenti durumunu kontrol et.';db.commit();return {'ok':True}
+    row.last_error={'source_unavailable':'Bazı dersler okunamadı. HaliçX oturumunu ve eklentiyi kontrol et.',
+                    'files_incomplete':'Bazı dosyalar kopyalanamadı; kaynak bağlantıları korunuyor.',
+                    'account_changed':'HaliçX hesabı değişti. Eklentiyi durdurup yeniden eşleştir.'}[data.code]
+    db.commit();return {'ok':True}
 
 @router.put('/files/{item_id}')
 async def upload(item_id:int,request:Request,row:Extension,db:DB):
@@ -175,8 +190,8 @@ async def upload(item_id:int,request:Request,row:Extension,db:DB):
     db.commit();return {'stored':True,'size':len(blob),'changed':changed}
 
 @router.get('/items')
-def items(user:CurrentUser,db:DB):
-    rows=db.execute(select(HalicxItem,Enrollment.course_name).join(Enrollment,Enrollment.id==HalicxItem.enrollment_id).where(HalicxItem.user_id==user.id).order_by(HalicxItem.updated_at.desc()).limit(1000)).all()
+def items(user:CurrentUser,db:DB,limit:int=Query(200,ge=1,le=500),offset:int=Query(0,ge=0)):
+    rows=db.execute(select(HalicxItem,Enrollment.course_name).join(Enrollment,Enrollment.id==HalicxItem.enrollment_id).where(HalicxItem.user_id==user.id).order_by(HalicxItem.updated_at.desc(),HalicxItem.id.desc()).offset(offset).limit(limit)).all()
     return [{'id':i.id,'enrollment_id':i.enrollment_id,'course_name':name,'term_id':i.term_id,'kind':i.kind,'title':i.title,'description':i.description,'source_url':i.source_url,'unread':i.unread,'file_size':i.file_size,'updated_at':i.updated_at} for i,name in rows]
 
 @router.post('/items/{item_id}/read',status_code=204)

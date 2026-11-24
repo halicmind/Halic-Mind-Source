@@ -76,3 +76,38 @@ def test_file_upload_limit_and_unchanged_file(academic_app):
     r=env.client.put(f'/api/v1/integrations/halicx/files/{fid}',headers=headers,content=b'x'*(5*1024*1024+1))
     assert r.status_code==413
     assert env.client.get(f'/api/v1/integrations/halicx/files/{fid}').content==b'file'
+
+def test_archived_course_is_not_recreated_and_source_rename_is_reflected(academic_app):
+    env=academic_app;headers,tid=pair(env)
+    assert env.client.post('/api/v1/integrations/halicx/sync',headers=headers,json=data()).status_code==200
+    payload=data();payload['courses'][0]['name']='Yeni ders adı'
+    assert env.client.post('/api/v1/integrations/halicx/sync',headers=headers,json=payload).status_code==200
+    assert env.connection.scalar(text('SELECT course_name FROM enrollments'))=='Yeni ders adı'
+    env.connection.execute(text('UPDATE enrollments SET archived_at=now()'))
+    result=env.client.post('/api/v1/integrations/halicx/sync',headers=headers,json=payload)
+    assert result.status_code==200 and result.json()['archived_skipped']==2
+    assert env.connection.scalar(text('SELECT count(*) FROM enrollments'))==1
+
+
+def test_expired_connection_status_and_stable_item_pagination(academic_app):
+    env=academic_app;headers,tid=pair(env)
+    env.client.post('/api/v1/integrations/halicx/sync',headers=headers,json=data())
+    first=env.client.get('/api/v1/integrations/halicx/items?limit=1').json()
+    second=env.client.get('/api/v1/integrations/halicx/items?limit=1&offset=1').json()
+    assert len(first)==len(second)==1 and first[0]['id']!=second[0]['id']
+    env.connection.execute(text("UPDATE halicx_connections SET expires_at=now()-interval '1 day'"))
+    status=env.client.get('/api/v1/integrations/halicx').json()
+    assert status['connected'] is False and status['paired'] is True and status['needs_repair'] is True
+    assert env.client.get('/api/v1/integrations/halicx/settings',headers=headers).status_code==401
+
+
+def test_full_item_quota_allows_existing_content_updates(academic_app):
+    env=academic_app;headers,tid=pair(env)
+    env.client.post('/api/v1/integrations/halicx/sync',headers=headers,json=data())
+    env.connection.execute(text("""INSERT INTO halicx_items (user_id,term_id,enrollment_id,source_id,kind,title,source_url,content_hash,unread,file_size)
+        SELECT user_id,term_id,enrollment_id,'12:page:'||g,'material','Seed','https://huzem.halic.edu.tr/UE2/mod/page/view.php?id='||g,'seed',false,0
+        FROM (SELECT * FROM halicx_items LIMIT 1) s CROSS JOIN generate_series(1,4998) g"""))
+    r=env.client.post('/api/v1/integrations/halicx/sync',headers=headers,json=data('Güncel'))
+    assert r.status_code==200 and r.json()['changed']==1
+    payload=data('Güncel');payload['courses'][0]['items'].append({'id':'folder:999999','kind':'material','title':'Klasör','url':'https://huzem.halic.edu.tr/UE2/mod/folder/view.php?id=999999'})
+    assert env.client.post('/api/v1/integrations/halicx/sync',headers=headers,json=payload).status_code==413

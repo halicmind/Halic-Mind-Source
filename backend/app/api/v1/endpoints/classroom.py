@@ -87,6 +87,7 @@ def callback(request: Request, user: CurrentUser, db: DB):
             db.add(row)
         row.google_subject, row.email, row.encrypted_refresh_token = subject, email, encrypted_token
         row.connected_at = datetime.now(timezone.utc)
+        row.last_sync_at = None
         row.preview_hash = row.preview_data = row.preview_expires_at = None
         db.commit()
         result = 'connected'

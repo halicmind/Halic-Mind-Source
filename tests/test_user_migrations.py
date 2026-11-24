@@ -30,7 +30,7 @@ def test_upgrade_downgrade_and_autogenerate_preserve_catalog(migration_db):
         'users', 'email_verifications', 'auth_rate_limits', 'alembic_version',
         'academic_profiles', 'academic_terms', 'enrollments', 'assignments', 'exam_documents', 'exam_sync_state', 'exam_selections', 'classroom_connections', 'halicx_connections', 'halicx_items',
     }
-    assert connection.scalar(text('SELECT version_num FROM alembic_version')) == '0010_halicx'
+    assert connection.scalar(text('SELECT version_num FROM alembic_version')) == '0011_halicx_rls'
     command.check(config)  # No schema drift and no catalog DROP proposals.
     command.upgrade(config, 'head')  # Reapplying must be a no-op.
     command.downgrade(config, 'base')

@@ -186,3 +186,13 @@ def test_google_authorization_verifies_id_token_and_permissions(monkeypatch, goo
         subject, email, encrypted = classroom.authorize('code','verifier','nonce')
         assert subject == 'google-student' and email == 'student@gmail.com'
         assert classroom.cipher().decrypt(encrypted.encode()) == b'private-refresh'
+
+def test_unchanged_classroom_import_is_counted_without_false_updates(academic_app,provider):
+    env=academic_app;tid=term(env)['id'];seed_connection(env)
+    first=prepare(env,tid)
+    env.client.post('/api/v1/integrations/google/import',json={'preview_id':first['preview_id']})
+    second=prepare(env,tid)
+    result=env.client.post('/api/v1/integrations/google/import',json={'preview_id':second['preview_id']})
+    assert result.status_code==200
+    assert result.json()['assignments_updated']==0 and result.json()['assignments_unchanged']==1
+    assert env.connection.scalar(text('SELECT count(*) FROM assignments'))==1
