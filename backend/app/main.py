@@ -48,8 +48,15 @@ def student_interface():
 @app.get('/privacy/', include_in_schema=False)
 @app.get('/terms/', include_in_schema=False)
 def public_information(request: Request):
+    if request.url.path == '/' and not SERVE_FRONTEND:
+        return {'application': settings.application_name, 'service': 'api', 'docs': '/docs', 'health': '/health'}
     slug = request.url.path.strip('/') or 'about'
     return FileResponse(FRONTEND_ROOT / 'public' / slug / 'index.html', headers={'Cache-Control': 'no-cache'})
+
+
+@app.get('/halicx-extension.zip', include_in_schema=False)
+def halicx_extension_download():
+    return FileResponse(FRONTEND_ROOT / 'public' / 'halicx-extension.zip', filename='halicmind-halicx-extension.zip', media_type='application/zip')
 
 
 @app.get('/legal.css', include_in_schema=False)

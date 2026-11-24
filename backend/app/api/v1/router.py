@@ -22,3 +22,6 @@ router.include_router(assignments_router)
 
 from app.api.v1.endpoints.exams import router as exams_router
 router.include_router(exams_router)
+
+from app.api.v1.endpoints.halicx import router as halicx_router
+router.include_router(halicx_router)

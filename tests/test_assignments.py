@@ -127,7 +127,7 @@ def test_assignment_migration_keeps_catalog_and_existing_courses(migration_db):
     tables=set(inspect(connection).get_table_names())
     count=connection.scalar(text('SELECT count(*) FROM course_revisions'))
     command.upgrade(config,'head')
-    assert set(inspect(connection).get_table_names()) == tables | {'assignments', 'exam_documents', 'exam_sync_state', 'exam_selections', 'classroom_connections'}
+    assert set(inspect(connection).get_table_names()) == tables | {'assignments', 'exam_documents', 'exam_sync_state', 'exam_selections', 'classroom_connections', 'halicx_connections', 'halicx_items'}
     assert connection.scalar(text('SELECT count(*) FROM course_revisions')) == count
     command.check(config)
     command.downgrade(config,'0004_academic_planning')

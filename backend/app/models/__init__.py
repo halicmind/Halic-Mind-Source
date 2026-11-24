@@ -12,3 +12,5 @@ from app.models.classroom import ClassroomConnection
 __all__ = ['User', 'AuthRateLimit', 'EmailVerification', 'AcademicProfile', 'AcademicTerm', 'Enrollment', 'Assignment', 'ExamDocument', 'ExamSyncState', 'ExamSelection']
 
 from app.models.exam import ExamDocument, ExamSyncState, ExamSelection
+
+from app.models.halicx import HalicxConnection, HalicxItem
