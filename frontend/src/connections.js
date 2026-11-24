@@ -18,7 +18,7 @@ export async function mountConnections(panel, { terms, onImported, e }) {
       ${error ? `<p role="alert">${e(error)}</p>` : ''}
       ${notice ? `<p role="status">${e(notice)}</p>` : ''}
       ${!connection ? '<p role="status">Bağlantı kontrol ediliyor…</p>' : !connection.enabled ? '<p>Classroom bağlantısı henüz etkinleştirilmedi.</p>' : !connection.connected ? `
-        <p>Google hesabından yalnızca derslerini ve kendi ödevlerini okuma izni istenir.</p>
+        <p>Google hesabının kimliği, e-posta adresi, derslerin ve kendi ödevlerin için okuma izni istenir. Yenileme anahtarı şifreli saklanır; seçtiğin kayıtlar onayından sonra aktarılır. <a href="/privacy/" target="_blank" rel="noopener">Gizlilik Politikası</a></p>
         <button class="btn primary" data-classroom-action="connect" ${busy ? 'disabled' : ''}>Google Classroom’u bağla</button>` : `
         <p><strong>${e(connection.email)}</strong> bağlı.${connection.last_sync_at ? ` Son aktarım: ${e(date(connection.last_sync_at))}.` : ''}</p>
         <button class="btn light" data-classroom-action="disconnect" ${busy ? 'disabled' : ''}>Bağlantıyı kaldır</button>
