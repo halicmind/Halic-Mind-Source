@@ -61,3 +61,22 @@ def test_supabase_schema_is_private_and_preserves_ssl_options():
     assert url.query['sslmode'] == 'require'
     assert url.query['options'] == '-csearch_path=halicmind'
     assert url.password == 'password'
+
+
+def test_custom_domain_survives_render_environment(monkeypatch):
+    from app.core.config import RENDER_ORIGIN
+    from app.services.classroom import redirect_uri
+    config = Settings(_env_file=None, database_url='postgresql://unused',
+                      jwt_secret_key='a' * 64, render_external_url=RENDER_ORIGIN,
+                      public_origin='https://halicmind.com/')
+    assert config.public_origin == 'https://halicmind.com'
+    monkeypatch.setattr(settings, 'public_origin', config.public_origin)
+    monkeypatch.setattr(settings, 'render_external_url', RENDER_ORIGIN)
+    def request(origin):
+        return Request({'type': 'http', 'method': 'POST', 'path': '/', 'scheme': 'http',
+                        'server': ('backend', 8000), 'headers': [
+                            (b'x-halicmind-web', b'1'), (b'origin', origin.encode())]})
+    validate_web_request(request('https://halicmind.com'))
+    with pytest.raises(HTTPException):
+        validate_web_request(request('https://attacker.example'))
+    assert redirect_uri() == 'https://halicmind.com/api/v1/integrations/google/callback'

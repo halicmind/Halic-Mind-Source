@@ -50,7 +50,9 @@ class Settings(BaseSettings):
     @model_validator(mode='after')
     def validate_smtp(self):
         if self.render_external_url == RENDER_ORIGIN:
-            self.public_origin = RENDER_ORIGIN
+            # Preserve an explicitly configured custom domain behind the Pages proxy.
+            if not self.public_origin or self.public_origin.rstrip('/') == PAGES_ORIGIN:
+                self.public_origin = RENDER_ORIGIN
             self.serve_frontend = True
             self.exam_sync_enabled = True
         if self.public_origin:
