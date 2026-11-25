@@ -7,7 +7,7 @@ def main():
     source=root/'extension'/'halicx'
     output=root/'frontend'/'public'/'halicx-extension.zip'
     with ZipFile(output,'w',ZIP_DEFLATED) as archive:
-        for name in ['manifest.json','background.js','content.js','popup.html','popup.css','popup.js']:
+        for name in ['manifest.json','background.js','content.js','connect.js','popup.html','popup.css','popup.js']:
             archive.write(source/name,name)
     print('HaliçX extension packaged.')
 

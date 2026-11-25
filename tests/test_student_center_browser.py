@@ -52,14 +52,23 @@ def test_student_center_browser_workflows(academic_app):
             assert page.locator('.workspace').count()==1,section
             for width in [390,768,1440]:
                 page.set_viewport_size({'width':width,'height':900});assert page.evaluate('document.documentElement.scrollWidth<=innerWidth'),(section,width)
-            if os.getenv('HALICMIND_UI_CAPTURE_DIR') and section in ['overview','materials','study']:
+            if os.getenv('HALICMIND_UI_CAPTURE_DIR') and section in ['overview','materials','study','connections']:
                 target=Path(os.environ['HALICMIND_UI_CAPTURE_DIR']);target.mkdir(parents=True,exist_ok=True);page.evaluate('scrollTo({top:0,behavior:"instant"})');page.wait_for_timeout(800);page.screenshot(path=str(target/(section+'-center.png')),full_page=True)
         page.set_viewport_size({'width':390,'height':844});page.get_by_role('button',name='Menüyü aç').click()
         page.get_by_role('button',name='Menüyü kapat').click();assert not page.locator('.workspace').evaluate('(e)=>e.classList.contains("menu-open")')
         assert page.get_by_role('link',name='Verilerimi JSON olarak indir').count()==1
+        # Simulate an installed extension bridge; the real API creates the pairing.
+        page.add_init_script("""window.addEventListener('message', e=>{const m=e.data;if(m?.source==='halicmind-connect'){window.postMessage({source:'halicmind-extension',id:m.id,ok:true,version:'0.3.0'},location.origin);}});""")
+        page.goto('https://testserver/app/#/connections')
+        page.reload()
+        button=page.locator('[data-halicx-pair] button');button.wait_for()
+        playwright.expect(button).to_be_enabled()
+        button.click();page.get_by_text('Hesabın uzantıya bağlandı.',exact=False).wait_for()
+        assert page.locator('#halicx-key').count()==0
         # A failed materials request must not hide the entire HaliçX setup card.
         page.route('**/api/v1/integrations/halicx/items*',lambda r:r.fulfill(status=200,content_type='application/json',body='{}'))
         page.goto('https://testserver/app/#/connections')
+        page.reload()
         page.locator('.halicx-panel').wait_for(state='visible')
         page.locator('.halicx-panel [role="alert"]').wait_for()
         assert page.locator('[data-halicx-refresh]').is_visible()

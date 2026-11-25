@@ -103,7 +103,14 @@ async function ensureAlarm(){
 chrome.runtime.onInstalled.addListener(ensureAlarm);chrome.runtime.onStartup.addListener(ensureAlarm);void ensureAlarm();
 chrome.alarms.onAlarm.addListener(alarm=>{void(async()=>{if(alarm.name===NEXT||(alarm.name===PERIODIC&&!await chrome.alarms.get(NEXT)))await sync();})();});
 chrome.runtime.onMessage.addListener((m,sender,respond)=>{
- if(sender.id!==chrome.runtime.id||sender.tab)return;
+ if(sender.id!==chrome.runtime.id)return;
+ if(sender.tab){
+  let url;try{url=new URL(sender.url);}catch{return;}
+  if(url.origin!=='https://halicmind.com'||!url.pathname.startsWith('/app/')||sender.frameId!==0)return;
+  if(m.action==='bridge-ping'){respond({data:{version:'0.3.0'}});return;}
+  if(m.action!=='bridge-pair')return;
+  m={action:'save',key:m.key};
+ }
  const run=async()=>{
   if(m.action==='save'){
    if(!/^[A-Za-z0-9_-]{43}$/.test(m.key))throw Error('Geçersiz eşleştirme anahtarı.');

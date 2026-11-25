@@ -14,9 +14,9 @@ function harness({state={},courses=['1','2','3','4','5'],scan,fetchOverride,acco
   action:{setBadgeText:async()=>{},setBadgeBackgroundColor:async()=>{}},
   runtime:{id:'test',getPlatformInfo:async()=>({}),onInstalled:{addListener:()=>{}},onStartup:{addListener:()=>{}},onMessage:{addListener:fn=>listener=fn}},
  };
- const context=vm.createContext({chrome,fetch:async(url,options)=>{const path=url.split('/halicx')[1];requests.push({path,...options});if(fetchOverride){const r=await fetchOverride(path,options);if(r)return r;}return Response.json(path==='/settings'?{selected_courses:courses,account:ACCOUNT}:path==='/selection'?{selected:JSON.parse(options.body).courses}:path==='/sync'?{changed:1,uploads:[],warning:null}:{changed:true,ok:true});},Response,AbortSignal,AbortController,Uint8Array,crypto:webcrypto,atob,Error,Number,Math,Date,Promise,setTimeout,clearTimeout,setInterval,clearInterval});
+ const context=vm.createContext({chrome,fetch:async(url,options)=>{const path=url.split('/halicx')[1];requests.push({path,...options});if(fetchOverride){const r=await fetchOverride(path,options);if(r)return r;}return Response.json(path==='/settings'?{selected_courses:courses,account:ACCOUNT}:path==='/selection'?{selected:JSON.parse(options.body).courses}:path==='/sync'?{changed:1,uploads:[],warning:null}:{changed:true,ok:true});},Response,URL,AbortSignal,AbortController,Uint8Array,crypto:webcrypto,atob,Error,Number,Math,Date,Promise,setTimeout,clearTimeout,setInterval,clearInterval});
  vm.runInContext(source,context);
- const message=m=>new Promise(resolve=>listener(m,{id:'test'},resolve));
+ const message=(m,sender={id:'test'})=>new Promise(resolve=>{if(listener(m,sender,resolve)!==true)resolve(null);});
  const idle=async()=>{for(let i=0;i<300;i++){if(!vm.runInContext('busy',context))return;await new Promise(r=>setTimeout(r,5));}throw Error('worker did not finish');};
  return {storage,alarms,requests,messages,message,idle,alarm:async()=>{alarmListener({name:'halicx-next'});await new Promise(r=>setTimeout(r,0));await idle();}};
 }
@@ -56,4 +56,15 @@ test('large pending file queues resume in another worker round',async()=>{
  const h=harness({state:{cursor:0,pendingUploads:Array.from({length:25},(_,i)=>({item_id:i+1,url:'https://huzem.halic.edu.tr/UE2/pluginfile.php/1/'+i+'.pdf'}))}});
  await h.message({action:'sync'});await h.idle();assert.equal(h.storage.pendingUploads.length,5);assert.equal(h.storage.lastFullSync,undefined);
  await h.alarm();assert.equal(h.storage.pendingUploads.length,0);assert.ok(h.storage.lastFullSync);assert.equal(h.requests.filter(r=>r.path.startsWith('/files/')).length,25);
+});
+
+test('website pairing accepts only its top-level application tab and never grants sync controls',async()=>{
+ const h=harness();const sender={id:'test',tab:{id:3},frameId:0,url:'https://halicmind.com/app/#/connections'};
+ assert.equal((await h.message({action:'bridge-ping'},sender)).data.version,'0.3.0');
+ assert.equal(await h.message({action:'pause'},sender),null);
+ assert.equal(await h.message({action:'bridge-pair',key:'b'.repeat(43)},{...sender,url:'https://evil.example/app/'}),null);
+ assert.equal(await h.message({action:'bridge-pair',key:'b'.repeat(43)},{...sender,frameId:1}),null);
+ assert.equal(h.storage.key,KEY);
+ assert.ok((await h.message({action:'bridge-pair',key:'b'.repeat(43)},sender)).data);
+ assert.equal(h.storage.key,'b'.repeat(43));
 });
