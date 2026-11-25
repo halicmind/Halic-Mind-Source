@@ -63,7 +63,18 @@ def test_connections_preserve_target_and_recover_course_list_and_preview(academi
         mode['fail'] = False
         gc.get_by_role('button', name='Dersleri yenile').click()
         gc.get_by_label('Algoritma · A').wait_for()
-        first = term(env)
+        hx = page.locator('#halicx-panel')
+        assert hx.locator('[name=term]').is_disabled()
+        assert hx.locator('[name=term] option').inner_text() == 'Önce dönem oluştur'
+        hx.get_by_role('button', name='Dönem oluştur', exact=True).click()
+        form = page.locator('form[data-form="term"]')
+        form.locator('[name=academic_year]').select_option('2026')
+        form.locator('[name=term_type]').select_option('fall')
+        form.locator('[name=curriculum_period_number]').select_option('1')
+        form.locator('button[type=submit]').click()
+        playwright.expect(form).not_to_be_visible()
+        playwright.expect(hx.locator('[name=term]')).to_be_enabled()
+        assert '#/connections' in page.url
         second = term(env, academic_year=2025, term_type='spring')
         page.get_by_role('button', name='Verileri yenile', exact=True).click()
         page.locator('#classroom-term option').filter(has_text='2025').wait_for(state='attached')

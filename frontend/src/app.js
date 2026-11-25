@@ -254,8 +254,8 @@ function render(){
   if(state.page==='materials')void mountMaterials(root.querySelector('#materials-panel'),{terms:state.terms,courses:state.courses,e,onChanged:refreshCenter}).catch(showError);
   if(state.page==='study')void mountStudy(root.querySelector('#study-panel'),{courses:state.courses,termId:state.termId,e,onChanged:refreshCenter}).catch(showError);
   if(state.page==='profile'){const main=root.querySelector('main');main.querySelector('.site-footer').insertAdjacentHTML('beforebegin',`<section class="panel panel-padding account-data"><h2>Hesabın ve verilerin</h2><p>${e(state.user.email)}</p><a class="btn light" href="/api/v1/users/me/export">Verilerimi JSON olarak indir</a><p class="muted">Dersler, ödevler, çalışma kayıtları ve materyal bilgileri. Dosya kopyalarını Materyaller ekranından ayrı indirebilirsin.</p></section>`);}
-  if(state.page==='connections')void mountHalicx(root.querySelector('#halicx-panel'),{terms:state.terms,courses:state.courses,e,onImported:loadWorkspace,activeTermId:state.termId}).catch(error=>{const p=root.querySelector('#halicx-panel');if(p)p.innerHTML='<p role="alert">HaliçX bağlantısı yüklenemedi: '+e(error.message)+'</p>';});
-  if(state.page==='connections')void mountConnections(root.querySelector('#classroom-panel'),{terms:state.terms,onImported:loadWorkspace,e,activeTermId:state.termId});
+  if(state.page==='connections')void mountHalicx(root.querySelector('#halicx-panel'),{terms:state.terms,courses:state.courses,e,onImported:loadWorkspace,activeTermId:state.termId,profileReady:Boolean(state.profile)}).catch(error=>{const p=root.querySelector('#halicx-panel');if(p)p.innerHTML='<p role="alert">HaliçX bağlantısı yüklenemedi: '+e(error.message)+'</p>';});
+  if(state.page==='connections')void mountConnections(root.querySelector('#classroom-panel'),{terms:state.terms,onImported:loadWorkspace,e,activeTermId:state.termId,profileReady:Boolean(state.profile)});
   if(document.activeElement===document.body && !modal.open)root.querySelector('main')?.focus({preventScroll:true});
   if(state.page==='profile') hydrateProfileForm().then(()=>{const form=root.querySelector('[data-form="profile"]');if(form)settleForm(form);}).catch(showError);
 }
@@ -872,7 +872,7 @@ async function submitForm(form){
       cleanForm(form);
       state.terms = [term,...state.terms.filter(item=>item.id!==term.id)].sort((a,b)=>b.academic_year-a.academic_year || a.id-b.id);
       state.termId=term.id;rememberTerm();void refreshExams();void refreshCenter();await closeModal(true);
-      if(editing) render(); else showTermCourses();toast(editing?'Dönemin güncellendi.':'Dönemin hazır. Şimdi derslerini ekleyebilirsin.');
+      if(editing||state.page==='connections') render(); else showTermCourses();toast(editing?'Dönemin güncellendi.':state.page==='connections'?'Dönemin hazır. Şimdi hesabını bağlayabilirsin.':'Dönemin hazır. Şimdi derslerini ekleyebilirsin.');
     }else if(type==='custom-course' || type==='edit-course'){
       const editing=type==='edit-course';
       let grade=gradedStatuses.includes(data.status)?(data.grade || '').trim():'';

@@ -31,8 +31,8 @@ export async function mountConnections(panel, { terms, onImported, e, activeTerm
         ${`
         <form data-classroom-form>
           <div class="field"><label for="classroom-term">Aktarılacak HalicMind dönemi</label>
-          <select id="classroom-term" name="term_id" required ${busy ? 'disabled' : ''}>
-          ${terms.map(term => `<option value="${term.id}" ${Number(termId) === term.id ? 'selected' : ''}>${e(term.academic_year)} · ${e(({fall:'Güz',spring:'Bahar',summer:'Yaz',annual:'Yıllık'})[term.term_type])}</option>`).join('')}</select></div>
+          <select id="classroom-term" name="term_id" required ${busy||!terms.length ? 'disabled' : ''}>
+          ${!terms.length?'<option value="">Önce dönem oluştur</option>':''}${terms.map(term => `<option value="${term.id}" ${Number(termId) === term.id ? 'selected' : ''}>${e(term.academic_year)} · ${e(({fall:'Güz',spring:'Bahar',summer:'Yaz',annual:'Yıllık'})[term.term_type])}</option>`).join('')}</select></div>
           <fieldset ${busy ? 'disabled' : ''}><legend>Aktarılacak dersler</legend>
           ${courseError ? `<p role="alert">Ders listesi alınamadı: ${e(courseError)}</p>` : !coursesLoaded ? '<p role="status">Ders listesi henüz yüklenmedi.</p>' : courses.length ? courses.map(course => `<label class="check-line"><input type="checkbox" name="course_id" value="${e(course.id)}" ${selected.has(course.id) ? 'checked' : ''}> ${e(course.name)}${course.section ? ` · ${e(course.section)}` : ''}</label>`).join('') : '<p>Bu Google hesabında öğrencisi olduğun aktif ders bulunamadı. Classroom’da kullandığın hesabı bağladığını kontrol et.</p>'}
           </fieldset><p>En fazla 20 ders seçebilirsin. İzinler okulun Google politikalarına bağlıdır.</p>
