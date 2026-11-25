@@ -40,3 +40,19 @@ Classroom teslim saati tanımı: https://developers.google.com/workspace/classro
 v0.3.0 connect.js yalnızca halicmind.com/app/ üst çerçevesinde çalışır. Sayfa, kullanıcı düğmeye bastığında mevcut doğrulanmış oturumuyla kapsamlı olmayan HaliçX anahtarı üretir. Köprü yalnızca ping ve eşleştirme işlemini iletir; arka plan gönderen uzantı kimliği, tam origin, uygulama yolu ve üst çerçeveyi doğrular. Okul sekmeleri bu köprüyle ayar değiştiremez. Sayfaya anahtar veya depodaki bilgiler geri döndürülmez; anahtar URL’ye veya sayfa yerel deposuna yazılmaz. Ders seçimi ve aktarım onayı uzantıda kalır.
 
 Chrome Web Store yayını henüz yapılmamıştır. Windows/macOS üzerinde sessiz uzantı kurulumu desteklenmez; son kullanıcı mağazanın kurulum onayını vermelidir. Mağaza kaydı ve inceleme tamamlandığında ZIP adımı mağaza bağlantısıyla değiştirilebilir. Mevcut ZIP güncellenerek elle kurulabilir.
+
+## Windows kurulum yardımcısı
+
+`extension/setup/Setup.cs` yönetici izni istemeyen bir .NET Framework masaüstü yardımcısıdır. Doğrulanmış uzantı ZIP'ini içine gömülü taşır; ağdan kod veya anahtar indirmez. SHA-256 bütünlük kontrolü ve sabit dosya listesiyle yalnızca uzantı dosyalarını `%LOCALAPPDATA%\HalicMind\HalicX-Extension` içine çıkarır. Klasör/ dosya bağlantılarını reddeder. Panoya klasör yolunu kopyalar, Explorer ve Chrome uzantılar ekranını açar. Chrome profiline, registry'ye, politikalara ve başlangıç görevlerine yazmaz. Kullanıcı Chrome'da geliştirici modunu ve paketlenmemiş klasörü kendisi onaylar. Yardımcıdaki hesaba dönüş düğmesi güncel sayfayı açarak uzantı algılamasını başlatır. Başka klasörden kurulu eski uzantı önce kaldırılmalıdır.
+
+Dosya dijital imzalı değildir; Windows yayımlayıcı/SmartScreen uyarısı gösterebilir. Bu yardımcı Chrome Web Store kurulumu veya sessiz kurulum değildir. Güvenlik önlemlerini kapatma talimatı verilmez. macOS/Linux ve manuel yükleme için ZIP bağlantısı korunur.
+
+Windows'ta paket yenileme:
+
+```powershell
+.venv/Scripts/python.exe -m scripts.package_halicx
+.venv/Scripts/python.exe -m scripts.package_halicx_setup
+powershell.exe -NoProfile -NonInteractive -File tests/test_halicx_setup.ps1
+```
+
+Üretilen `frontend/public/halicx-setup-windows.exe` dağıtım artefaktıdır. Uzantı ZIP'i her değiştiğinde yardımcı tekrar derlenmelidir; gömülü özet ve kaynak dosyalar testte karşılaştırılır. Linux dağıtımı mevcut Windows artefaktını yayımlar, derleme yapmaz.

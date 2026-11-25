@@ -59,6 +59,11 @@ def halicx_extension_download():
     return FileResponse(FRONTEND_ROOT / 'public' / 'halicx-extension.zip', filename='halicmind-halicx-extension.zip', media_type='application/zip')
 
 
+@app.get('/halicx-setup-windows.exe', include_in_schema=False)
+def halicx_setup_download():
+    return FileResponse(FRONTEND_ROOT / 'public' / 'halicx-setup-windows.exe', filename='HalicMind-HalicX-Kurulum.exe', media_type='application/octet-stream', headers={'Cache-Control': 'no-cache'})
+
+
 @app.get('/legal.css', include_in_schema=False)
 def public_information_styles():
     return FileResponse(FRONTEND_ROOT / 'public' / 'legal.css', media_type='text/css')
