@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Request, Response
+from fastapi import APIRouter, BackgroundTasks, Depends, Form, Request, Response
 from fastapi.security import OAuth2PasswordRequestForm
 
 from app.api.dependencies import DB
@@ -67,7 +67,7 @@ def reset_password(data: PasswordResetRequest, request: Request, db: DB):
 
 
 @router.post('/login', response_model=TokenResponse | MessageResponse, description='Swagger için username alanına okul e-postanızı yazın. API girişi Bearer token döndürür. Aynı origin web girişi (X-HalicMind-Web: 1) HttpOnly çerez ayarlar ve gövdede yalnızca mesaj döndürür.')
-def login(request: Request, response: Response, db: DB, form: Annotated[OAuth2PasswordRequestForm, Depends()]):
+def login(request: Request, response: Response, db: DB, form: Annotated[OAuth2PasswordRequestForm, Depends()], remember_me: Annotated[bool, Form()] = False):
     web_session = request.headers.get('X-HalicMind-Web') == '1'
     if web_session:
         validate_web_request(request)
@@ -76,10 +76,11 @@ def login(request: Request, response: Response, db: DB, form: Annotated[OAuth2Pa
     user = auth.authenticate(db, form.username, form.password)
     response.headers['Cache-Control'] = 'no-store'
     response.headers['Pragma'] = 'no-cache'
-    token = create_access_token(user.id, user.session_version)
+    minutes = settings.remember_me_days * 1440 if web_session and remember_me else settings.access_token_expire_minutes
+    token = create_access_token(user.id, user.session_version, expires_minutes=minutes)
     if web_session:
         response.set_cookie(
-            SESSION_COOKIE, token, max_age=settings.access_token_expire_minutes * 60,
+            SESSION_COOKIE, token, max_age=minutes * 60,
             httponly=True, samesite='lax', secure=bool(settings.public_origin) or request.url.scheme == 'https', path='/api/v1',
         )
         return MessageResponse(message='Oturum açıldı.')

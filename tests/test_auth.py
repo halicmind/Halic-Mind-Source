@@ -38,6 +38,26 @@ def verified_token(env):
     return response.json()['access_token']
 
 
+def test_remember_me_extends_only_web_cookie_and_logout_clears_it(auth_app):
+    from app.core.web_security import SESSION_COOKIE
+    env = auth_app
+    verified_token(env)
+    headers = {'X-HalicMind-Web': '1', 'Origin': 'http://testserver'}
+    for remember, minutes in [('false', settings.access_token_expire_minutes), ('true', settings.remember_me_days * 1440)]:
+        result = env.client.post('/api/v1/auth/login', headers=headers,
+            data={'username': EMAIL, 'password': PASSWORD, 'remember_me': remember})
+        assert result.status_code == 200
+        assert 'access_token' not in result.json()
+        claims = jwt.decode(result.cookies[SESSION_COOKIE], options={'verify_signature': False})
+        assert claims['exp'] - claims['iat'] == minutes * 60
+        assert f'Max-Age={minutes * 60}' in result.headers['set-cookie']
+        assert 'HttpOnly' in result.headers['set-cookie']
+    result = env.client.post('/api/v1/auth/login', data={'username': EMAIL, 'password': PASSWORD, 'remember_me': 'true'})
+    assert result.json()['expires_in'] == settings.access_token_expire_minutes * 60
+    result = env.client.post('/api/v1/auth/logout', headers=headers)
+    assert result.status_code == 204 and 'Max-Age=0' in result.headers['set-cookie']
+
+
 def test_register_verify_login_and_me(auth_app):
     env = auth_app
     response = register(env, email=' 23000000001@OGR.HALIC.EDU.TR ')

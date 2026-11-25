@@ -34,12 +34,12 @@ def hash_reset_token(token: str) -> str:
     return hashlib.sha256(b'password-reset:' + token.encode()).hexdigest()
 
 
-def create_access_token(user_id: int, session_version: int = 0) -> str:
+def create_access_token(user_id: int, session_version: int = 0, *, expires_minutes: int | None = None) -> str:
     now = datetime.now(timezone.utc)
     return jwt.encode(
         {
             'sub': str(user_id), 'iat': now, 'ver': session_version,
-            'exp': now + timedelta(minutes=settings.access_token_expire_minutes),
+            'exp': now + timedelta(minutes=settings.access_token_expire_minutes if expires_minutes is None else expires_minutes),
             'iss': JWT_ISSUER, 'aud': JWT_AUDIENCE, 'type': 'access',
         },
         settings.jwt_secret_key.get_secret_value(), algorithm='HS256',
