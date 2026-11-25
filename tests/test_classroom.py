@@ -153,6 +153,16 @@ def test_google_due_time_defaults_and_invalid_dates():
     assert error.value.status_code == 422
 
 
+def test_oauth_expired_local_session_returns_to_app_without_linking(academic_app, google_config):
+    env = academic_app
+    response = env.client.get(BASE + '/api/v1/integrations/google/callback?code=private-code&state=bad',
+                              headers={'Authorization':'Bearer expired'}, follow_redirects=False)
+    assert response.status_code == 303
+    assert 'google=error&reason=session' in response.headers['location']
+    assert 'private-code' not in response.headers['location']
+    assert env.connection.scalar(text('SELECT count(*) FROM classroom_connections')) == 0
+
+
 def test_google_api_pagination_and_limits(monkeypatch):
     pages = [{'courses':[{'id':'1'}], 'nextPageToken':'next'}, {'courses':[{'id':'2'}]}]
     requests = []

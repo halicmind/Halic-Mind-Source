@@ -1,16 +1,18 @@
 import base64
+import logging
+from typing import Annotated
 from datetime import datetime, timedelta, timezone
 import hashlib
 import secrets
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 import jwt
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.exc import IntegrityError
 
-from app.api.dependencies import CurrentUser, DB
+from app.api.dependencies import CurrentUser, DB, get_current_user, oauth2_scheme
 from app.core.config import settings
 from app.core.web_security import validate_web_request
 from app.models import ClassroomConnection
@@ -68,19 +70,25 @@ def connect(request: Request, user: CurrentUser):
 
 
 @router.get('/google/callback', include_in_schema=False)
-def callback(request: Request, user: CurrentUser, db: DB):
+def callback(request: Request, db: DB, token: Annotated[str | None, Depends(oauth2_scheme)]):
     enabled()
     result = 'error'
+    stage = 'session'
     try:
+        user = get_current_user(request, db, token)
+        stage = 'state'
         flow = jwt.decode(request.cookies.get(FLOW_COOKIE, ''), settings.jwt_secret_key.get_secret_value(),
                           algorithms=['HS256'], audience='classroom-oauth', issuer='halicmind',
                           options={'require': ['exp', 'iat', 'uid', 'ver', 'state', 'nonce', 'verifier']})
         if flow['uid'] != user.id or flow['ver'] != user.session_version or not secrets.compare_digest(flow['state'], request.query_params.get('state', '')):
             raise ValueError('Invalid Classroom OAuth state')
+        stage = 'consent'
         code = request.query_params.get('code')
         if request.query_params.get('error') or not code or len(code) > 8192:
             raise ValueError('Missing Google authorization')
+        stage = 'provider'
         subject, email, encrypted_token = classroom.authorize(code, flow['verifier'], flow['nonce'])
+        stage = 'save'
         row = db.get(ClassroomConnection, user.id, with_for_update=True)
         if row is None:
             row = ClassroomConnection(user_id=user.id)
@@ -93,7 +101,9 @@ def callback(request: Request, user: CurrentUser, db: DB):
         result = 'connected'
     except (jwt.PyJWTError, ValueError, KeyError, TypeError, OSError, HTTPException, IntegrityError):
         db.rollback()
-    response = RedirectResponse(settings.public_origin + '/app/#/connections?google=' + result, status_code=303)
+        logging.getLogger(__name__).warning('Classroom OAuth failed at stage: %s', stage)
+    suffix = '&reason=' + stage if result == 'error' else ''
+    response = RedirectResponse(settings.public_origin + '/app/#/connections?google=' + result + suffix, status_code=303)
     response.delete_cookie(FLOW_COOKIE, path=FLOW_PATH, secure=True, httponly=True, samesite='lax')
     return response
 

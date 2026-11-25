@@ -1,11 +1,14 @@
 import { api } from './api.js';
 
-export async function mountConnections(panel, { terms, onImported, e }) {
+export async function mountConnections(panel, { terms, onImported, e, activeTermId }) {
   const outcome = new URLSearchParams(location.hash.split('?')[1]).get('google');
-  let connection, courses = [], preview, busy = true;
+  let connection, courses = [], preview, busy = true, coursesLoaded = false, courseError = "";
   let error = outcome === 'error' ? 'Google bağlantısı tamamlanamadı. Gerekli izinleri vererek tekrar dene; okul yönetici onayı gerekebilir.' : '';
-  let notice = outcome === 'connected' ? 'Google Classroom hesabın bağlandı.' : '';
-  let termId = terms[0]?.id;
+  let notice = '', pendingOutcome = outcome;
+  const reason=new URLSearchParams(location.hash.split('?')[1]).get('reason');
+  const reasons={session:'Haliç Mind oturumun sona ermiş. Tekrar giriş yapıp Google hesabını bağla.',state:'Google bağlantı oturumu doğrulanamadı veya süresi doldu. Bu sekmeden bağlantıyı yeniden başlat.',consent:'Google izinleri tamamlanmadı. Hesabını yeniden bağlayıp ders ve ödev izinlerini onayla.',provider:'Google hesabı doğrulanamadı. Bağlantıyı yeniden başlat; sorun sürerse görünen Google hata mesajını kontrol et.',save:'Google bağlantısı kaydedilemedi. Yeniden dene.'};
+  if(outcome==='error'&&reasons[reason])error=reasons[reason];
+  let termId = terms.find(t=>t.id===activeTermId)?.id || terms[0]?.id;
   const selected = new Set();
   const date = value => new Intl.DateTimeFormat('tr-TR', {
     dateStyle: 'medium', timeStyle: 'short', timeZone: 'Europe/Istanbul',
@@ -24,15 +27,16 @@ export async function mountConnections(panel, { terms, onImported, e }) {
         <button class="btn light" data-classroom-action="disconnect" ${busy ? 'disabled' : ''}>Bağlantıyı kaldır</button>
         <button class="btn light" data-classroom-action="connect" ${busy ? 'disabled' : ''}>Google izinlerini yenile</button>
         <button class="btn light" data-classroom-action="reload" ${busy ? 'disabled' : ''}>Dersleri yenile</button>
-        ${!terms.length ? '<p>Aktarmadan önce <a href="#/profile">akademik profilini ve dönemini oluştur</a>.</p>' : `
+        ${!terms.length ? '<p>Derslerini aşağıda görebilirsin. Aktarmak için <a href="#/courses">Derslerim ekranından dönem oluştur</a>; akademik profilin yoksa önce <a href="#/profile">profilini tamamla</a>.</p>' : ''}
+        ${`
         <form data-classroom-form>
           <div class="field"><label for="classroom-term">Aktarılacak HalicMind dönemi</label>
           <select id="classroom-term" name="term_id" required ${busy ? 'disabled' : ''}>
           ${terms.map(term => `<option value="${term.id}" ${Number(termId) === term.id ? 'selected' : ''}>${e(term.academic_year)} · ${e(({fall:'Güz',spring:'Bahar',summer:'Yaz',annual:'Yıllık'})[term.term_type])}</option>`).join('')}</select></div>
           <fieldset ${busy ? 'disabled' : ''}><legend>Aktarılacak dersler</legend>
-          ${courses.length ? courses.map(course => `<label class="check-line"><input type="checkbox" name="course_id" value="${e(course.id)}" ${selected.has(course.id) ? 'checked' : ''}> ${e(course.name)}${course.section ? ` · ${e(course.section)}` : ''}</label>`).join('') : '<p>Bu Google hesabında öğrencisi olduğun aktif ders bulunamadı.</p>'}
+          ${courseError ? `<p role="alert">Ders listesi alınamadı: ${e(courseError)}</p>` : !coursesLoaded ? '<p role="status">Ders listesi henüz yüklenmedi.</p>' : courses.length ? courses.map(course => `<label class="check-line"><input type="checkbox" name="course_id" value="${e(course.id)}" ${selected.has(course.id) ? 'checked' : ''}> ${e(course.name)}${course.section ? ` · ${e(course.section)}` : ''}</label>`).join('') : '<p>Bu Google hesabında öğrencisi olduğun aktif ders bulunamadı. Classroom’da kullandığın hesabı bağladığını kontrol et.</p>'}
           </fieldset><p>En fazla 20 ders seçebilirsin. İzinler okulun Google politikalarına bağlıdır.</p>
-          <button class="btn primary" type="submit" ${busy || !courses.length ? 'disabled' : ''}>Önizlemeyi hazırla</button>
+          <button class="btn primary" type="submit" ${busy || !coursesLoaded || !courses.length || !terms.length ? 'disabled' : ''}>Önizlemeyi hazırla</button>
         </form>`}
         ${preview ? `<section class="panel panel-padding"><h3>Aktarım önizlemesi</h3>
           <p>Hedef: ${e(terms.find(term=>term.id === preview.term_id)?.academic_year)} dönemi. Tekrar aktarım aynı kayıtları günceller; tamamlanma ve arşiv durumlarını korur.</p>
@@ -46,9 +50,14 @@ export async function mountConnections(panel, { terms, onImported, e }) {
     </div>`;
   }
   async function load() {
-    connection = await api('/integrations/google');
-    courses = [];
-    courses = connection.enabled && connection.connected ? await api('/integrations/google/courses') : [];
+    const next = await api('/integrations/google');
+    if(connection?.email!==next.email){selected.clear();preview=null;}
+    if(pendingOutcome==='connected'){if(next.connected)notice='Google Classroom hesabın bağlandı.';else error='Google bağlantısı bu hesaba kaydedilmemiş. Google Classroom’u bağla düğmesiyle yeniden başlat.';pendingOutcome=null;}
+    connection = next; courses = []; coursesLoaded = false; courseError = '';
+    if(connection.enabled && connection.connected){
+      try{const rows=await api('/integrations/google/courses');if(!Array.isArray(rows))throw Error('Ders listesi beklenmeyen biçimde geldi.');courses=rows;coursesLoaded=true;}
+      catch(failure){if(failure.name==='AbortError')throw failure;courseError=failure.message;return;}
+    }
     const available=new Set(courses.map(c=>c.id));
     for(const id of selected)if(!available.has(id))selected.delete(id);
   }
@@ -56,7 +65,7 @@ export async function mountConnections(panel, { terms, onImported, e }) {
     if (busy) return;
     busy = true; error = ''; notice = ''; draw();
     try { await action(); }
-    catch (failure) { error = failure.message || 'Classroom işlemi tamamlanamadı.'; }
+    catch (failure) { if(failure.name!=='AbortError')error = failure.message || 'Classroom işlemi tamamlanamadı.'; }
     finally { busy = false; draw(); }
   }
   panel.addEventListener('click', event => {
@@ -66,14 +75,14 @@ export async function mountConnections(panel, { terms, onImported, e }) {
     void run(async () => {
       if (action === 'connect') {
         const result = await api('/integrations/google/connect', {method:'POST'});
-        location.assign(result.authorization_url);
+        if(panel.isConnected)location.assign(result.authorization_url);
       } else if (action === 'disconnect') {
         if (!window.confirm('Google bağlantısı kaldırılsın mı? Aktardığın ders ve ödevler korunacak.')) return;
-        await api('/integrations/google', {method:'DELETE'}); preview = null; await load();
+        await api('/integrations/google', {method:'DELETE'}); preview = null; selected.clear(); await load();
       } else if (action === 'reload') {
         preview = null; await load();
       } else if (action === 'import' && preview) {
-        const result = await api('/integrations/google/import', {method:'POST', body:{preview_id:preview.preview_id}});
+        let result;try{result = await api('/integrations/google/import', {method:'POST', body:{preview_id:preview.preview_id}});}catch(failure){if(failure.status===409)preview=null;throw failure;}
         preview = null;
         notice = `${result.courses_created} ders ve ${result.assignments_created} ödev eklendi; ${result.assignments_updated} ödev güncellendi. ${result.archived_skipped} arşivli, ${result.undated_skipped} tarihsiz kayıt aktarılmadı. ${result.assignments_unchanged||0} ödev zaten güncel.`;
         try { await onImported(); await load(); } catch { error='Aktarım kaydedildi; güncel liste alınamadı. Sayfayı yenileyebilirsin.'; }
@@ -86,14 +95,17 @@ export async function mountConnections(panel, { terms, onImported, e }) {
       if (event.target.checked) selected.add(event.target.value); else selected.delete(event.target.value);
       preview = null;
     }
+    const name=event.target.name,value=event.target.value;
     draw();
+    [...panel.querySelectorAll('[name]')].find(input=>input.name===name&&input.value===value)?.focus({preventScroll:true});
   });
   panel.addEventListener('submit', event => {
     if (!event.target.matches('[data-classroom-form]')) return;
     event.preventDefault(); event.stopPropagation();
     void run(async () => {
+      if(!terms.some(t=>t.id===Number(termId)))throw new Error('Aktarım için önce bir dönem oluştur.');
       if (!selected.size || selected.size > 20) throw new Error('1–20 arasında ders seç.');
-      preview = await api('/integrations/google/preview', {method:'POST', body:{term_id:Number(termId),course_ids:[...selected]}});
+      preview = await api('/integrations/google/preview', {method:'POST', body:{term_id:Number(termId),course_ids:[...selected]},timeoutMs:90000});
     });
   });
   draw();

@@ -56,3 +56,5 @@ powershell.exe -NoProfile -NonInteractive -File tests/test_halicx_setup.ps1
 ```
 
 Üretilen `frontend/public/halicx-setup-windows.exe` dağıtım artefaktıdır. Uzantı ZIP'i her değiştiğinde yardımcı tekrar derlenmelidir; gömülü özet ve kaynak dosyalar testte karşılaştırılır. Linux dağıtımı mevcut Windows artefaktını yayımlar, derleme yapmaz.
+
+Bağlantılar ekranındaki hedef dönem, düğme/uzantı algılama/otomatik yenilemelerden bağımsız tutulur. Durum ve materyal istekleri ayrı değerlendirilir; biri başarısız olduğunda diğeri gösterilmeye devam eder. Aynı veriyle gelen arka plan kontrolü formu tekrar çizmez. Durumu yenile işlemi uzantıyı da yeniden algılar.

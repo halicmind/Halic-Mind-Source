@@ -254,8 +254,8 @@ function render(){
   if(state.page==='materials')void mountMaterials(root.querySelector('#materials-panel'),{terms:state.terms,courses:state.courses,e,onChanged:refreshCenter}).catch(showError);
   if(state.page==='study')void mountStudy(root.querySelector('#study-panel'),{courses:state.courses,termId:state.termId,e,onChanged:refreshCenter}).catch(showError);
   if(state.page==='profile'){const main=root.querySelector('main');main.querySelector('.site-footer').insertAdjacentHTML('beforebegin',`<section class="panel panel-padding account-data"><h2>Hesabın ve verilerin</h2><p>${e(state.user.email)}</p><a class="btn light" href="/api/v1/users/me/export">Verilerimi JSON olarak indir</a><p class="muted">Dersler, ödevler, çalışma kayıtları ve materyal bilgileri. Dosya kopyalarını Materyaller ekranından ayrı indirebilirsin.</p></section>`);}
-  if(state.page==='connections')void mountHalicx(root.querySelector('#halicx-panel'),{terms:state.terms,courses:state.courses,e,onImported:loadWorkspace}).catch(error=>{const p=root.querySelector('#halicx-panel');if(p)p.innerHTML='<p role="alert">HaliçX bağlantısı yüklenemedi: '+e(error.message)+'</p>';});
-  if(state.page==='connections')void mountConnections(root.querySelector('#classroom-panel'),{terms:state.terms,onImported:loadWorkspace,e});
+  if(state.page==='connections')void mountHalicx(root.querySelector('#halicx-panel'),{terms:state.terms,courses:state.courses,e,onImported:loadWorkspace,activeTermId:state.termId}).catch(error=>{const p=root.querySelector('#halicx-panel');if(p)p.innerHTML='<p role="alert">HaliçX bağlantısı yüklenemedi: '+e(error.message)+'</p>';});
+  if(state.page==='connections')void mountConnections(root.querySelector('#classroom-panel'),{terms:state.terms,onImported:loadWorkspace,e,activeTermId:state.termId});
   if(document.activeElement===document.body && !modal.open)root.querySelector('main')?.focus({preventScroll:true});
   if(state.page==='profile') hydrateProfileForm().then(()=>{const form=root.querySelector('[data-form="profile"]');if(form)settleForm(form);}).catch(showError);
 }
@@ -1190,7 +1190,7 @@ async function boot(){
     state.config=await api('/ui-config',{quiet401:true});
     document.title=`${applicationName()} · Öğrenci alanı`;
     try{state.user=await api('/users/me',{quiet401:true});}catch(error){if(error.status!==401)throw error;}
-    if(state.user){await loadWorkspace();renderDestination();}else {renderAuth();if(location.hash.includes('microsoft_error=1')){history.replaceState(null,'','#/login');toast('Okul hesabıyla giriş tamamlanamadı. Haliç öğrenci hesabını seçip tekrar dene. Okul yönetici onayı gerekebilir.',true);}}
+    if(state.user){await loadWorkspace();renderDestination();}else {renderAuth();if(location.hash.includes('google=error')&&location.hash.includes('reason=session'))toast('Google bağlantısını tamamlamak için tekrar giriş yapıp Bağlantılar ekranından yeniden başlat.',true);if(location.hash.includes('microsoft_error=1')){history.replaceState(null,'','#/login');toast('Okul hesabıyla giriş tamamlanamadı. Haliç öğrenci hesabını seçip tekrar dene. Okul yönetici onayı gerekebilir.',true);}}
   }catch(error){
     if(error.name==='AbortError')return;
     if(error.status===401) return renderAuth();

@@ -58,3 +58,11 @@ All endpoints require the student's verified session. Cookie-authenticated write
 - `DELETE /api/v1/integrations/google`: remove local connection
 
 Synthetic tests cover ownership, state/session binding, nonce/issuer/audience/scope validation, encrypted tokens, pagination, date conversion, replay/expiry, idempotent imports, completion/archive preservation and disconnect behavior. Complete a real Google-account authorization and import test before enabling broad student use.
+
+## Bağlantı ekranının durumları
+
+Google dönüş adresindeki `google=connected` tek başına bağlantı kanıtı değildir; arayüz sunucudaki kayıtla doğrular. Kaydedilmiş bağlantı varsa dersler kişisel dönem oluşturulmadan da listelenir; dönem yalnızca önizleme/aktarım için zorunludur. Ders isteği hatası boş ders listesi olarak gösterilmez. Google izinlerini yenileme ve listeyi tekrar yükleme ayrı işlemlerdir. Önizleme isteğinin istemci zaman aşımı 90 saniyedir; sağlayıcı/proxy sınırları yine geçerlidir. Süresi dolmuş önizleme temizlenir ve seçimler korunarak yenisi hazırlanabilir.
+
+OAuth dönüşünde yerel oturum bitmişse JSON hata ekranı yerine uygulamanın giriş ekranına dönülür. `reason` yalnızca sabit aşama kodları içerir (`session`, `state`, `consent`, `provider`, `save`); Google kodu veya belirteci dönüş adresine eklenmez. Bağlantı başarısızlığının aşaması sunucu günlüğüne belirteç olmadan yazılır.
+
+`tests/test_connections_browser.py`, iki paneli gerçek FastAPI/izole PostgreSQL ile birlikte sınar: dönem olmadan ders listeleme, sağlayıcı erişim hatasından toparlanma, seçilen dönemin korunması, panellerin bağımsızlığı, süresi dolmuş önizlemeyi yeniden hazırlama ve doğru döneme aktarım. Google ve tarayıcı uzantısı bu testte simüledir; canlı Google izin onayı ayrıca doğrulanmalıdır.
