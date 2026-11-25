@@ -57,5 +57,12 @@ def test_student_center_browser_workflows(academic_app):
         page.set_viewport_size({'width':390,'height':844});page.get_by_role('button',name='Menüyü aç').click()
         page.get_by_role('button',name='Menüyü kapat').click();assert not page.locator('.workspace').evaluate('(e)=>e.classList.contains("menu-open")')
         assert page.get_by_role('link',name='Verilerimi JSON olarak indir').count()==1
+        # A failed materials request must not hide the entire HaliçX setup card.
+        page.route('**/api/v1/integrations/halicx/items*',lambda r:r.fulfill(status=200,content_type='application/json',body='{}'))
+        page.goto('https://testserver/app/#/connections')
+        page.locator('.halicx-panel').wait_for(state='visible')
+        page.locator('.halicx-panel [role="alert"]').wait_for()
+        assert page.locator('[data-halicx-refresh]').is_visible()
+        assert page.get_by_text('Eşleştirme ve kurulum',exact=True).is_visible()
         assert not errors,errors
         b.close()
